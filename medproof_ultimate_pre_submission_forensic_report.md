@@ -397,7 +397,7 @@ As a strict, skeptical external judge:
 
 1. **If I look ONLY at the live Vercel demo (`https://medproof-ashen.vercel.app/`):**  
    I would see the old Vite application titled "RxVerify" pointing to Preview testnet, rather than the Next.js MedProof application described in the updated README.
-2. **If I look ONLY at GitHub `origin/main` (`https://github.com/shouvik7majumdar/confidential-prescription`):**  
+2. **If I look ONLY at GitHub `origin/main` (`https://github.com/shouvik7majumdar/healthcare-credential`):**  
    I would find commit `2e22174` with the old `prescription-verifier.compact` contract and Vite frontend, because the local Next.js code and `medproof.compact` contract have not been pushed.
 3. **If I look at `.github/workflows/ci.yml` on GitHub:**  
    I would see that CI builds `prescription-verifier.compact` rather than `medproof.compact`.

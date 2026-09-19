@@ -1,6 +1,6 @@
 # 🏥 MedProof — Confidential Healthcare Credential & Consent Exchange
 
-[![CI/CD Pipeline](https://github.com/shouvik7majumdar/confidential-prescription/actions/workflows/ci.yml/badge.svg)](https://github.com/shouvik7majumdar/confidential-prescription/actions/workflows/ci.yml)
+[![CI/CD Pipeline](https://github.com/shouvik7majumdar/healthcare-credential/actions/workflows/ci.yml/badge.svg)](https://github.com/shouvik7majumdar/healthcare-credential/actions/workflows/ci.yml)
 [![Midnight Network](https://img.shields.io/badge/Midnight-Preprod%20Network-blue)](https://midnight.network)
 [![Zero Knowledge](https://img.shields.io/badge/Zero--Knowledge-Compact%20v0.16-purple)](https://midnight.network)
 [![Category](https://img.shields.io/badge/Midnight-Confidential%20Credentials-success)](https://midnight.network)
@@ -16,9 +16,9 @@
 | Resource | Description | Status / Link |
 | :--- | :--- | :--- |
 | **🌐 Live Application** | Deployed web application on Vercel | [Live Demo](https://medproof-ashen.vercel.app/) |
-| **🐙 GitHub Repository** | Open-source monorepo codebase | [GitHub Repo](https://github.com/shouvik7majumdar/confidential-prescription) |
+| **🐙 GitHub Repository** | Open-source monorepo codebase | [GitHub Repo](https://github.com/shouvik7majumdar/healthcare-credential) |
 | **🎥 Demo Video** | Interactive application walkthrough | [Watch Demo Video (YouTube)](https://youtu.be/-8m0TcUsUUc) |
-| **⚙️ CI/CD Workflow** | GitHub Actions build & verification pipeline | [View CI/CD Pipeline](https://github.com/shouvik7majumdar/confidential-prescription/actions/workflows/ci.yml) |
+| **⚙️ CI/CD Workflow** | GitHub Actions build & verification pipeline | [View CI/CD Pipeline](https://github.com/shouvik7majumdar/healthcare-credential/actions/workflows/ci.yml) |
 | **🔍 NightScan Explorer** | Midnight Preprod Network Explorer | [Midnight Preprod Explorer](https://explorer.preprod.midnight.network/) |
 | **📄 Product Proposal** | Complete project documentation and specs | [PROPOSAL.md](PROPOSAL.md) |
 
@@ -169,8 +169,8 @@ npm test
 ### Steps
 ```bash
 # 1. Clone & install dependencies
-git clone https://github.com/shouvik7majumdar/confidential-prescription.git
-cd confidential-prescription
+git clone https://github.com/shouvik7majumdar/healthcare-credential.git
+cd healthcare-credential
 npm install && cd ui && npm install && cd ..
 
 # 2. Start local Proof Server
