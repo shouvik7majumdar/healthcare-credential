@@ -8,7 +8,7 @@ import { CredentialCategory, CREDENTIAL_CATEGORY_LABELS, OffChainCredential } fr
 import { medproofService, IssueCredentialStatus } from '../../services/medproof-contract';
 
 export default function ProviderPortalPage() {
-  const { wallet, isConnected } = useWallet();
+  const { wallet, isConnected, connect } = useWallet();
   const { credentials, addCredential, revokeCredential, consents } = useMedProofData();
   const [isProviderAuthorized, setIsProviderAuthorized] = useState<boolean | null>(null);
 
@@ -122,11 +122,18 @@ export default function ProviderPortalPage() {
 
       if (txMode === 'preprod') {
         if (!isConnected || !wallet.address) {
-          throw new Error('Please connect your Midnight Lace wallet (authorized provider account) to issue on-chain.');
+          try {
+            await connect('preprod');
+          } catch (e) {
+            throw new Error('Please connect your Midnight Lace wallet (authorized provider account) to issue on-chain.');
+          }
+        }
+        if (!isProviderAuthorized) {
+          throw new Error('Connected wallet is not an authorized provider on Midnight Preprod. Please switch to Local Vault mode or authorize provider.');
         }
 
         const result = await medproofService.executeRealIssueCredential({
-          providerAddress: wallet.address,
+          providerAddress: wallet.address!,
           commitment,
           onStatusChange: (status) => {
             setIssueStatus(status);
@@ -142,7 +149,7 @@ export default function ProviderPortalPage() {
           dosage,
           instructions,
           diagnosisCode,
-          prescriberName: `Dr. (${wallet.address.substring(0, 10)}...)`,
+          prescriberName: wallet.address ? `Dr. (${wallet.address.substring(0, 10)}...)` : 'Dr. Authorized Practitioner',
           issuerProviderCommitment: providerCommitment,
           schemaId: 1,
           category,
@@ -575,13 +582,15 @@ export default function ProviderPortalPage() {
               <button
                 type="submit"
                 className="btn btn-primary"
-                disabled={isIssuing || (txMode === 'preprod' && (!isConnected || !isProviderAuthorized))}
+                disabled={isIssuing}
                 style={{ minWidth: '220px' }}
               >
                 {isIssuing
                   ? 'Processing ZK Issuance...'
                   : txMode === 'preprod'
-                  ? '⚡ Issue on Midnight Preprod'
+                  ? !isConnected
+                    ? '🔗 Connect Wallet & Issue on Preprod'
+                    : '⚡ Issue on Midnight Preprod'
                   : '💾 Save to Local Vault'}
               </button>
             </div>
