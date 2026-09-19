@@ -75,6 +75,7 @@ export interface CreateWalletOptions {
    */
   restore?: boolean;
   cwd?: string;
+  clock?: (config: any) => { now: () => Date };
 }
 
 function warnRestoreFailure(kind: ChildKind, err: unknown): void {
@@ -118,6 +119,7 @@ export async function createWallet(opts: CreateWalletOptions): Promise<WalletCon
 
   const wallet = await WalletFacade.init({
     configuration: walletConfig,
+    clock: opts.clock ?? (() => ({ now: () => new Date(Date.now() - 60_000) })),
     shielded: async (config) => {
       const cls = ShieldedWallet(config);
       if (saved.shielded !== undefined) {

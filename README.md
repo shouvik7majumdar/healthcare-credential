@@ -1,357 +1,191 @@
-# 🏥 Confidential Prescription Verification Platform (RxVerify)
+# 🏥 MedProof — Confidential Healthcare Credential & Consent Exchange
 
 [![CI/CD Pipeline](https://github.com/shouvik7majumdar/confidential-prescription/actions/workflows/ci.yml/badge.svg)](https://github.com/shouvik7majumdar/confidential-prescription/actions/workflows/ci.yml)
-[![Midnight Network](https://img.shields.io/badge/Midnight-Preview%20Testnet-orange)](https://midnight.network)
-[![Zero Knowledge](https://img.shields.io/badge/Zero--Knowledge-Compact%20v0.31-blue)](https://midnight.network)
-[![Level 3 Category](https://img.shields.io/badge/Level-3%20Confidential%20Credentials-success)](https://midnight.network)
+[![Midnight Network](https://img.shields.io/badge/Midnight-Preprod%20Network-blue)](https://midnight.network)
+[![Zero Knowledge](https://img.shields.io/badge/Zero--Knowledge-Compact%20v0.16-purple)](https://midnight.network)
+[![Category](https://img.shields.io/badge/Midnight-Confidential%20Credentials-success)](https://midnight.network)
 [![Vercel Deployment](https://img.shields.io/badge/Vercel-Live%20App-black?logo=vercel)](https://confidential-prescriptionnn.vercel.app/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**RxVerify** is a production-grade, privacy-preserving healthcare application built on the **Midnight Network** using **Compact** smart contracts and Zero-Knowledge proofs (zk-SNARKs). RxVerify enables patients, certified healthcare prescribers, and licensed pharmacies to issue, verify, manage, and revoke medical prescriptions without exposing sensitive Personal Health Information (PHI), diagnostic data, or patient/doctor identities on-chain.
+**MedProof** is a production-grade, privacy-preserving healthcare credential and consent exchange built on the **Midnight Network** using **Compact** smart contracts and Zero-Knowledge proofs (zk-SNARKs). MedProof empowers patients, authorized healthcare prescribers, and licensed verifiers (pharmacies, insurers, research clinics) to issue, manage, consent to, and verify healthcare credentials without exposing sensitive Personal Health Information (PHI), diagnostic data, or patient/doctor identities on-chain.
 
 ---
 
-## 🎥 Demo Video
-
-**Watch the complete project demonstration on YouTube:**
-
-[![Watch Full Demo](https://img.shields.io/badge/▶%20WATCH%20FULL%20DEMO-YOUTUBE-red?style=for-the-badge&logo=youtube)](https://youtu.be/-8m0TcUsUUc)
-
-[https://youtu.be/-8m0TcUsUUc](https://youtu.be/-8m0TcUsUUc)
-
----
-
-## 🔗 Project Links
+## 🎥 Demo Video & Live Links
 
 | Resource | Description | Status / Link |
 | :--- | :--- | :--- |
 | **🌐 Live Application** | Deployed web application on Vercel | [Live Demo](https://confidential-prescriptionnn.vercel.app/) |
 | **🐙 GitHub Repository** | Open-source monorepo codebase | [GitHub Repo](https://github.com/shouvik7majumdar/confidential-prescription) |
-| **🎥 Demo Video** | Interactive application walkthrough | [Watch Demo Video](https://youtu.be/-8m0TcUsUUc) |
+| **🎥 Demo Video** | Interactive application walkthrough | [Watch Demo Video (YouTube)](https://youtu.be/-8m0TcUsUUc) |
 | **⚙️ CI/CD Workflow** | GitHub Actions build & verification pipeline | [View CI/CD Pipeline](https://github.com/shouvik7majumdar/confidential-prescription/actions/workflows/ci.yml) |
-| **🔍 Smart Contract Explorer** | Midnight Preview Network Explorer | [Midnight Explorer](https://explorer.preview.midnight.network/) |
+| **🔍 NightScan Explorer** | Midnight Preprod Network Explorer | [Midnight Preprod Explorer](https://explorer.preprod.midnight.network/) |
 | **📄 Product Proposal** | Complete project documentation and specs | [PROPOSAL.md](PROPOSAL.md) |
 
 ---
 
-## 📌 Project Overview
+## 📌 Verified Preprod Deployment & Provenance
 
-The **Confidential Prescription Verification Platform (RxVerify)** addresses a critical dilemma in modern healthcare technology: how to facilitate instant, tamper-proof prescription verification across hospitals and pharmacies without violating patient confidentiality or disclosing sensitive doctor credentials.
+The canonical MedProof smart contract (`medproof.compact`) is deployed and actively verified on the **Midnight Preprod Network**:
 
-### The Problem with Public Blockchains
-
-Standard public blockchains (such as Ethereum or Cardano L1) record all smart contract state transitions publicly. If a hospital attempts to manage prescription verification on a transparent ledger:
-
-- **Doctor PII & Qualifications Exposed**: Medical licenses, institutional credentials, and wallet identities are publicly indexed and linked forever.
-- **Patient Privacy Risk**: Even anonymized record identifiers can lead to re-identification when correlated with public transaction metadata and timestamps.
-- **Compliance Violations**: Strict regulatory frameworks (HIPAA, GDPR) strictly forbid exposing patient data or medical credentials on public ledgers.
-
-### The Midnight Zero-Knowledge Solution
-
-Built using the **Midnight Protocol** and **Compact** smart contract language, this dApp leverages a dual-state architecture:
-
-1. **Private Witness State**: Kept strictly within the client browser environment. Medical qualification secrets, digital signatures (`doctorSignature`), and prescription hashes (`prescriptionHash`) never leave the user's device.
-2. **Public Ledger State**: Contains only immutable cryptographic commitments, state transition sequence counters (`verificationCount`), and contract operational flags (`contractActive`).
-3. **ZK Proof Generation**: Using Midnight's local Proof Server, the browser generates zero-knowledge proofs proving that a doctor or pharmacy possesses a valid credential and prescription hash without revealing the underlying data.
-
----
-
-## ✨ Features
-
-- 👨‍⚕️ **Authorized Prescriber Portal**: Healthcare providers can issue digitally signed, confidential medical credentials on-chain.
-- 🔐 **Confidential Verification**: Pharmacies verify prescription legitimacy by generating ZK proofs without revealing medication, dosage, or patient PII.
-- 💡 **Selective Disclosure Engine**: Interactive transparency toggle demonstrating the exact boundary between public ledger state and private ZK witnesses.
-- 😷 **Patient View & Instant QR Code**: Patients inspect their confidential credentials and present secure verification QR codes.
-- 📜 **Immutable Audit History**: Verifiable record of all prescription verification events and zero-knowledge proof hashes.
-- 📊 **Healthcare Telemetry Dashboard**: Real-time aggregate metrics displaying verification counts and contract active status.
-- 🚫 **Revocation Lifecycle Management**: Full administrative lifecycle enabling doctors to revoke prescriptions when needed.
-- 🎨 **Modern Full-Stack React Architecture**: Responsive interface featuring glassmorphic UI, dark mode themes, and Vite bundling.
-- 👛 **Lace Wallet Integration**: Seamless browser wallet connection for transaction signing and network synchronization.
-
----
-
-## ✅ Challenge Requirements Checklist
-
-- [x] **Fully Functional Privacy dApp**: Deployed and fully operational web application.
-- [x] **Meaningful Midnight Privacy**: Uses private witnesses for prescription hashes and doctor signatures while committing proof counters on-chain.
-- [x] **Live Deployment**: Hosted and accessible on Vercel.
-- [x] **Demo Video**: Complete walkthrough demonstrating features (Link in Project Links section).
-- [x] **Lace Wallet Integration**: Connects to `window.midnight.mnLace` for network interaction.
-- [x] **Compact Smart Contract**: Written in `.compact`, compiled with ZK circuit (`verifyPrescription`).
-- [x] **CI/CD Pipeline**: GitHub Actions workflow (`.github/workflows/ci.yml`) validating build integrity and testing.
-- [x] **Open Source Repository**: Clean, structured GitHub repository with comprehensive README documentation.
-- [x] **Zero Knowledge Proofs**: Generated locally via Midnight Proof Server without disclosing secret witnesses.
-- [x] **Unit Testing**: Vitest test suite executing contract verification logic (30 passing tests).
-
----
-
-## 📌 Contract Address
-
-The smart contract is deployed on the **Midnight Preview Network**:
-
-| Field | Details / On-Chain Record |
+| Field | Details / Authoritative On-Chain Record |
 | :--- | :--- |
-| **Target Network** | Midnight Preview Network (Network ID: `preview`) |
-| **Contract Name** | `prescription-verifier.compact` |
-| **Deployed Contract Address** | `54b40b55db6c344ddb1511d13c93e2bbbb280b4c1738b912cd838f5ac94df8dc` |
-| **Deployment Tx Hash** | `08a9172562e3664a344b5403c9b8c5406f188fbf2a2b48a2653bc2e0b2fab623` |
-| **On-Chain Block Height** | Block `#271826` |
-| **Explorer Verification** | [Midnight NightScan Explorer](https://explorer.preview.midnight.network/) *(Search Contract Address or Tx Hash in top bar)* |
-| **Indexer GraphQL API** | `https://indexer.preview.midnight.network/api/v4/graphql` |
-| **Circuits Deployed** | `verifyPrescription` |
+| **Target Network** | Midnight Preprod Network (Network ID: `undeployed` / `preprod`) |
+| **Contract Name** | `medproof.compact` (`@midnight-ntwrk/medproof`) |
+| **Deployed Contract Address** | `94499aa3a15d5818967c5d8acc562daa1656ca07eb873cdfd4eca50d681def626` |
+| **Deployment Tx Hash** | `6187f85d86e03ba2b403d458878695bc10d825166131b68bcb861f074390609e` |
+| **Deployment Block Height** | Block `#2607889` |
+| **Explorer Verification** | [Midnight NightScan Explorer](https://explorer.preprod.midnight.network/) |
+| **Indexer GraphQL API** | `https://indexer.preprod.midnight.network/api/v4/graphql` |
+| **Indexer WebSocket** | `wss://indexer.preprod.midnight.network/api/v4/graphql/ws` |
+| **Proof Server Engine** | Midnight Proof Server `v8.1.0` (`http://127.0.0.1:6300`) |
+
+### Verified Complete On-Chain Transaction Provenance (All 7 Lifecycle Steps)
+
+MedProof has genuinely executed and independently verified the full end-to-end zero-knowledge confidential credential lifecycle on the live Midnight Preprod blockchain:
+
+| Stage | Operation | On-Chain Transaction Hash | Block Height | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **0. Deployment** | Deploy `medproof.compact` | `6187f85d86e03ba2b403d458878695bc10d825166131b68bcb861f074390609e` | `2607889` | **CONFIRMED** |
+| **1. Authorization** | `authorizeProvider(0xba4a...)` | `00b772a566cee43b7a5e560eeff3e77d85856e042868396d1a7ee9236fe5640fc1` | `2608061` | **CONFIRMED** |
+| **2. Credential Issuance** | `issueCredential(0xf66d...)` | `00a30d7b0e201a543f1de032f061e0ee954a8393bb71b786755724e16deed39c9e` | `2608563` | **CONFIRMED** |
+| **3. Consent Grant** | `grantConsent(0xf889...)` | `00cbe31e7ce13c4c46a1c70805c0621276e7934c6393974965b17a6272173b4086` | `2608758` | **CONFIRMED** |
+| **4. Repaired Issuance** | `issueCredential(0x1621...)` | `007c9aae77cf683c394e2c62ecf06cc425a4932656b4804b0e0fb6253ad7c5e51e` | `2621507` | **CONFIRMED** |
+| **5. Repaired Consent** | `grantConsent(0x906e...)` | `004f13eb6312cfb899486e0ba7c9947ef2ae7e6a3b1f1b087855c6ef57648a762c` | `2621575` | **CONFIRMED** |
+| **6. ZK Verification** | `verifyCredential(nullifier, ...)` | `00be95d3b45b8dc8d74dd1646667555db42da03f83929b5a8b26b846df95854456` | `2621646` | **CONFIRMED** |
+
+*(Historical note: The earlier prototype `prescription-verifier.compact` was deployed on Preview Testnet at address `54b40b55db6c344ddb1511d13c93e2bbbb280b4c1738b912cd838f5ac94df8dc` in Block `#271826`.)*
 
 ---
 
-## 🔒 Private Witness and Public State Separation & disclose() Mechanism
+## 🔒 Cryptographic Architecture & Privacy Guarantees
 
-In the Midnight Protocol architecture, smart contract data is strictly partitioned into **Private Witness State** (client-side execution state) and **Public Ledger State** (on-chain transparent state).
+In MedProof, all health data and personal identifiers are strictly partitioned into **Client-Side Private Witness State** and **On-Chain Public State**.
 
-### Why Certain Inputs are Private (Witness State)
+### Client-Side Witness State (Never Disclosed)
+1. **Patient Secret (`patientSecret`)**: A 256-bit entropy seed known solely to the patient, used to derive the patient commitment and cryptographic nullifiers.
+2. **Clinical Content & PHI**: Diagnostic codes, medication names, dosages, instructions, and notes remain strictly in the patient and doctor local storage.
+3. **Commitment Salt**: Random nonces that prevent dictionary and rainbow-table attacks against commitments.
+4. **Consent Pre-images**: Verifier authorization proof evaluated locally inside the ZK prover.
 
-1. **`prescriptionHash`**: The SHA-256 cryptographic hash of the prescription details. Keeping this key in witness state prevents unauthorized tracking or correlation of prescription data on-chain.
-2. **`doctorSignature`**: The doctor's private digital signature over the prescription payload. Keeping this private ensures that medical credentials and prescriber identities are never publicly indexed or linked to wallet addresses.
-3. **Medication & Patient PII**: Patient names, dosages, and instructions remain entirely client-side, ensuring compliance with strict healthcare privacy standards (HIPAA/GDPR).
+### On-Chain Public Ledger State (Transparent & Verifiable)
+1. **`totalCredentialsIssued`**: Monotonically increasing counter of registered credential commitments (`2`).
+2. **`totalVerifications`**: Verified zero-knowledge proof counter on Preprod (`1`).
+3. **`authorizedProviders`**: Map of verified healthcare provider public keys authorized to issue credentials.
+4. **`activeConsents`**: Map of active consent identifiers linking credential commitments to verifiers with expiration epochs.
+5. **`nullifiers`**: Cryptographic nullifiers preventing double-presentation or replay of single-use credentials.
 
-### How `disclose()` is Used in Compact Smart Contracts
-
-In the Compact smart contract language, `disclose(value)` selectively converts a derived client-side witness value into a transparent public ledger state item or transaction return value.
-
-- **`verifyPrescription` Circuit**:
-  ```compact
-  export circuit verifyPrescription(patientId: Uint<32>): [] {
-      assert(contractActive == true, "Contract is not accepting verifications");
-      const hash = prescriptionHash();
-      const sig  = doctorSignature();
-      assert(hash[0] != 0x00, "Prescription hash must be non-zero");
-      assert(sig[0] != 0x00, "Doctor signature must be non-zero");
-      disclose(patientId);
-      verificationCount = (verificationCount + 1) as Uint<64>;
-  }
-  ```
-  - *Mechanism*: Evaluates `prescriptionHash()` and `doctorSignature()` in private witness state to ensure the prescription is legitimate and signed. It then uses `disclose(patientId)` to publish only the non-sensitive session slot ID on-chain for verification tracking while incrementing `verificationCount`.
-
-### Summary: What an Observer Learns vs Cannot Learn
-
-| ❌ Cannot Learn (Private Witness State) | ✅ Can Learn (Public Ledger State) |
-| :--- | :--- |
-| Patient Personally Identifiable Information (PII) | Disclosed Session Slot ID (`patientId`) |
-| Medication Name, Dosage, and Administration Schedule | Total Verification Count (`verificationCount`) |
-| Doctor Real Identity & Medical License Number | Contract Active Status (`contractActive`) |
-| Raw Prescription Hash (`prescriptionHash`) | On-Chain Event Sequence & Timestamps |
-| Doctor Digital Signature (`doctorSignature`) | Target Contract Address (`54b4...8dc`) |
-| Private Prover Witness Parameters | Proof Acceptance Status |
-
----
-
-## 📊 Contract & Deployment Details
-
-| Setting | Value / Details |
-| :--- | :--- |
-| **Target Network** | Midnight Preview Network |
-| **Contract Name** | `prescription-verifier.compact` (`@midnight-ntwrk/prescription-verifier`) |
-| **Deployed Contract Address** | `54b40b55db6c344ddb1511d13c93e2bbbb280b4c1738b912cd838f5ac94df8dc` |
-| **Circuit Artifacts** | `verifyPrescription` |
-| **Compiler Version** | Compact `v0.5.1` (CLI `v0.31.1`) |
-| **Frontend Deployment** | [Vercel App](https://confidential-prescriptionnn.vercel.app/) |
-| **GitHub Repository** | [shouvik7majumdar/confidential-prescription](https://github.com/shouvik7majumdar/confidential-prescription) |
-| **CI/CD Pipeline** | [GitHub Actions Workflow](https://github.com/shouvik7majumdar/confidential-prescription/actions/workflows/ci.yml) |
-
----
-
-## 🍓 Wallet Connection Lifecycle
-
-The application integrates with the official **Midnight Lace Browser Wallet** (`window.midnight.mnLace`).
-
-1. **Detection & Injection**: The frontend checks for the `window.midnight.mnLace` object injected by the browser extension.
-2. **Access Authorization**: Requests wallet connection to retrieve the user's Preview account address and network state.
-3. **ZK Proof Signing**: Interacts with the Lace Wallet provider to sign zero-knowledge state transactions.
-
----
-
-## 🚀 Local Setup & Installation
-
-### Prerequisites
-
-- **OS**: Linux, macOS, or Windows (via WSL2 Ubuntu)
-- **Node.js**: `>=20.0.0` or `22.x` (`node -v`)
-- **npm**: `>=10.x` (`npm -v`)
-- **Docker**: Docker & Docker Compose daemon running (required for local Midnight Proof Server)
-- **Compact Compiler**: `compact` CLI `v0.31.1` / Compiler `v0.5.1`
-
-### 1. Clone Repository & Install Dependencies
-
-```bash
-git clone https://github.com/shouvik7majumdar/confidential-prescription.git
-cd confidential-prescription
-npm ci
-```
-
-### 2. Compile Compact Smart Contract
-
-```bash
-npm run compile
-```
-
-### 3. Start Local Midnight Proof Server
-
-```bash
-docker run -p 6300:6300 midnightntwrk/proof-server:latest
-```
-
-### 4. Build Workspace Packages
-
-```bash
-npm run build
-```
-
-### 5. Launch Frontend Development Server
-
-```bash
-npm run dev:ui
-```
-
-Open `http://localhost:5173` in your browser.
-
----
-
-## 🧪 Automated Testing
-
-The contract workspace includes an extensive unit test suite written with Vitest that validates smart contract state transitions, witness evaluations, and ZK proof verifications.
-
-```bash
-npm test
-```
-
-### Expected Output
-
-```text
- ✓ tests/network.test.ts (5 tests) 9ms
- ✓ tests/contract.test.ts (9 tests) 8ms
- ✓ tests/privacy.test.ts (7 tests) 9ms
- ✓ tests/healthcare.test.ts (9 tests) 10ms
-
- Test Files  4 passed (4)
-      Tests  30 passed (30)
-   Start at  12:56:53
-   Duration  781ms (transform 360ms, setup 0ms, collect 452ms, tests 36ms)
-```
-
----
-
-## 📷 Platform Screenshots
-
-### Landing Dashboard
-![Landing Dashboard](docs/images/landing-page.png)
-*Landing Dashboard — Glassmorphism UI with Authentic Midnight Lace Wallet Authorization Popup Modal.*
-
-### Prescriber Portal — Prescription Issuance
-![Prescriber Portal](docs/images/doctor-portal.png)
-*Prescriber Portal — Authorized healthcare providers issue digitally signed confidential credentials.*
+### Cryptographic Domain Consistency
+All commitments and nullifiers are calculated using the Midnight Poseidon hash primitive:
+- **Patient Commitment**: `Poseidon(pad(32, "PATIENT_ID"), patientSecret)`
+- **Credential Commitment**: `Poseidon(providerPk, patientCommitment, expiry, pad(32, "MEDPROOF_SALT"))`
+- **Consent Identifier**: `Poseidon(patientCommitment, verifierPk, credentialCommitment)`
+- **Verification Nullifier**: `Poseidon(pad(32, "MEDPROOF_NULLIFIER"), patientSecret, credentialCommitment)`
 
 ---
 
 ## 🏗️ System Architecture
 
-The Confidential Prescription Verification Platform is constructed with a privacy-first multi-tier architecture powered by the Midnight Protocol.
-
-### Architectural Components
-
-1. **Midnight Compact Smart Contract** (`contracts/prescription-verifier.compact`)
-   - `verifyPrescription`: Evaluates private witness credentials, enforces `contractActive == true`, discloses non-sensitive `patientId`, and increments `verificationCount`.
-2. **Full-Stack React Application** (`ui/`)
-   - Built with React 19, Vite, TypeScript, and Glassmorphism CSS.
-   - Features 6 interactive views: Telemetry Dashboard, Doctor Portal, Patient View, Pharmacy Portal, Audit History, and Privacy Model.
-3. **Browser Wallet** (`window.midnight.mnLace`)
-   - Integrates directly with the Midnight Lace Browser Wallet.
-   - Manages secret witnesses locally, signs transaction payloads, and maintains network sync with Midnight Preview.
-4. **Local Proof Server** (`midnight-proof-server`)
-   - Executes prover circuit computations locally via HTTP/WebSocket on port `6300`.
-   - Ensures private witness parameters never leak over network boundaries.
-5. **Midnight Infrastructure**
-   - Interacts with the Midnight Preview Network and indexing node infrastructure for fetching public ledger state.
-
-### System Dataflow & Sequence Diagram
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│               Prescriber Portal (Client UI)                      │
-│ - Digitally Signs Prescription  - Generates SHA-256 Hash         │
-└────────────────────────────────┬─────────────────────────────────┘
-                                 │
-                                 ▼
-┌──────────────────────────────────────────────────────────────────┐
-│               Midnight Compact Smart Contract                    │
-│ - Circuit: verifyPrescription                                    │
-│ - Private Witness State: prescriptionHash, doctorSignature       │
-│ - Public Ledger State: verificationCount, contractActive         │
-└────────────────────────────────┬─────────────────────────────────┘
-                                 │
-                                 ▼
-┌──────────────────────────────────────────────────────────────────┐
-│              Pharmacy Portal (ZK Verification)                   │
-│ - Executes Local Prover        - Submits ZK Proof On-Chain       │
-└────────────────────────────────┬─────────────────────────────────┘
-                                 │
-                                 ▼
-┌──────────────────────────────────────────────────────────────────┐
-│                Immutable Audit Log Verification                  │
-│ - Verifiable On-Chain Counter   - Zero Medical Data Exposure     │
-└──────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 📂 Monorepo Structure
+MedProof is organized as an enterprise monorepo:
 
 ```text
 confidential-prescription-verification/
-├── contracts/                  # Compact smart contract workspace
-│   ├── prescription-verifier.compact  # Main Compact contract implementation
-│   └── managed/                # Compiled ZK circuit artifacts & bindings
-├── ui/                         # React 19 web application (Vite, Glassmorphism CSS)
-│   ├── public/                 # Static assets and favicons
-│   ├── src/                    # React components, portals, and wallet service
-│   └── dist/                   # Production build output
-├── src/                        # CLI, deployment, wallet, and network utilities
-├── tests/                      # Vitest unit and integration test suite
-├── docs/images/                # Screenshots and documentation assets
-├── .github/workflows/          # GitHub Actions CI/CD pipelines
-├── package.json                # Workspace configuration and scripts
-├── PROPOSAL.md                 # Product proposal & technical specification
-└── README.md                   # Project documentation
+├── contracts/                  # Midnight Compact smart contract workspace
+│   ├── medproof.compact        # Production Compact contract with full consent lifecycle
+│   └── managed/medproof/       # Compiled ZK circuit artifacts & TypeScript bindings
+├── ui/                         # Next.js 15 App Router web application
+│   ├── src/app/                # 7 Healthcare workflows (/patient, /provider, /consent, etc.)
+│   ├── src/services/           # Lace Wallet integration & Midnight contract services
+│   ├── src/context/            # Context state distinguishing demo vs live on-chain data
+│   └── src/lib/config.ts       # Canonical Preprod network configuration
+├── src/                        # Admin CLI, deployment, wallet, and network utilities
+├── scripts/                    # Verified lifecycle execution & verification scripts
+├── tests/                      # 119 unit and integration tests (Vitest)
+├── docs/images/                # Visual assets and UI screenshots
+└── vercel.json                 # Vercel deployment configuration
+```
+
+### Full-Stack Healthcare Portals
+- **Patient Vault (`/patient`)**: Patients manage credentials, inspect private details, and grant time-bounded consent.
+- **Provider Portal (`/provider`)**: Verified prescribers issue tamper-proof cryptographic credentials.
+- **Consent Center (`/consent`)**: Granular consent authorization and revocation management.
+- **Verifier Portal (`/verifier`)**: Pharmacies, insurers, and clinical research teams verify credentials with zero PHI disclosure.
+- **Credential Explorer (`/credentials`)**: Public on-chain commitment audit trail.
+- **Privacy Architecture (`/privacy`)**: Interactive breakdown of private witnesses vs public state.
+
+---
+
+## 👛 Midnight Lace Wallet Integration
+
+The application integrates natively with the official **Midnight Lace Browser Wallet** via the DApp Connector standard (`window.midnight.mnLace`):
+
+1. **Auto-Detection**: Probes for the Lace extension and handles locked/disconnected states gracefully.
+2. **Access Authorization**: Requests read permissions for the user's Midnight Preprod address.
+3. **Hardware & Session Resiliency**: Incorporates backoff timeouts, session heartbeat caching, and network mismatch alerts.
+4. **ZK Proof Signing**: Submits zero-knowledge transactions with real tNIGHT balances and DUST fee management.
+
+---
+
+## 🧪 Automated Testing
+
+MedProof features a 100% passing test suite with **119 automated tests across 12 test files**:
+
+```bash
+npm test
+```
+
+### Verification Results
+
+```text
+ ✓ tests/lace-connection-optimization.test.ts (6 tests)
+ ✓ tests/lace-session-robustness.test.ts (7 tests)
+ ✓ tests/lace-fast-reconnect.test.ts (5 tests)
+ ✓ tests/phase6c-grant-consent.test.ts (8 tests)
+ ✓ tests/phase9r-domain-repair.test.ts (6 tests)
+ ✓ tests/healthcare.test.ts (9 tests)
+ ✓ tests/privacy.test.ts (7 tests)
+ ✓ tests/contract.test.ts (9 tests)
+ ✓ tests/network.test.ts (5 tests)
+ ✓ tests/level4-ux-upgrade.test.ts (24 tests)
+ ✓ tests/ui-nextjs-integration.test.ts (19 tests)
+ ✓ tests/medproof-contract.test.ts (14 tests)
+
+ Test Files  12 passed (12)
+      Tests  119 passed (119)
+   Start at  18:38:00
+   Duration  2.83s
 ```
 
 ---
 
-## ⚙️ CI/CD Pipeline
+## 🚀 Local Development Setup
 
-The repository utilizes GitHub Actions (`.github/workflows/ci.yml`) to enforce code quality, dependency validation, security auditing, and build verification on every commit:
+### Prerequisites
+- **Node.js**: `>=20.0.0` or `22.x`
+- **npm**: `>=10.x`
+- **Docker**: For local Midnight Proof Server (`midnightntwrk/proof-server:8.1.0`)
+- **Midnight Lace Extension**: Configured for Midnight Preprod Network
 
-1. **Repository Integrity Check**: Ensures all required configuration files and templates are present.
-2. **Compact Compiler Setup**: Installs `compact` CLI `v0.31.1`.
-3. **Node.js & Workspace Install**: Sets up Node.js 22 and installs dependencies via `npm ci`.
-4. **Contract Compilation & Verification**: Executes contract compilation and verifies ZK circuit generation.
-5. **Automated Testing**: Executes full Vitest test suite (30 passing tests).
-6. **Workspace Build Verification**: Runs full production workspace builds (`npm run build`).
+### Steps
+```bash
+# 1. Clone & install dependencies
+git clone https://github.com/shouvik7majumdar/confidential-prescription.git
+cd confidential-prescription
+npm install && cd ui && npm install && cd ..
 
----
+# 2. Start local Proof Server
+docker run -d -p 6300:6300 midnightntwrk/proof-server:8.1.0
 
-## 🛡️ Security & Cryptographic Guarantees
+# 3. Run test suite
+npm test
 
-1. **Zero-Knowledge Proof Isolation**: Prover witnesses never cross the boundary between client browser and network nodes.
-2. **Selective Disclosure Control**: On-chain data is restricted strictly to derived public commitments and verification counters.
-3. **Tamper-Proof Audit Logs**: Every prescription verification generates an unforgeable cryptographic proof hash.
-4. **Credential Confidentiality**: Medical license numbers and prescription details remain offline within the user's local state.
+# 4. Build Next.js production bundle
+cd ui && npm run build
 
----
-
-## 🗺️ Roadmap
-
-- [x] **Phase 1**: Implement `prescription-verifier.compact` smart contract with ZK circuit.
-- [x] **Phase 2**: Create full-stack React 19 web application with Lace Wallet integration.
-- [x] **Phase 3**: Deploy production build to Vercel and establish automated CI/CD pipeline.
-- [x] **Phase 4**: Deploy smart contract to Midnight Preview Testnet.
-- [ ] **Phase 5**: Add multi-hospital federated prescription governance and IPFS encrypted payload distribution.
+# 5. Start development server
+npm run dev:ui
+```
+Open `http://localhost:3000` to interact with the MedProof application.
 
 ---
 

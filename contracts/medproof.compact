@@ -1,0 +1,210 @@
+pragma language_version >= 0.23;
+
+import CompactStandardLibrary;
+
+export ledger adminCommitment: Bytes<32>;
+export ledger isContractActive: Boolean;
+export ledger currentEpoch: Uint<64>;
+export ledger totalCredentialsIssued: Uint<64>;
+export ledger totalVerifications: Uint<64>;
+export ledger authorizedProviders: Map<Bytes<32>, Boolean>;
+export ledger credentialIssuers: Map<Bytes<32>, Bytes<32>>;
+export ledger issuedCredentials: Map<Bytes<32>, Boolean>;
+export ledger revokedCredentials: Map<Bytes<32>, Boolean>;
+export ledger activeConsents: Map<Bytes<32>, Boolean>;
+export ledger nullifiers: Map<Bytes<32>, Boolean>;
+
+constructor(adminCommitmentParam: Bytes<32>) {
+    adminCommitment = disclose(adminCommitmentParam);
+    isContractActive = true;
+    currentEpoch = 1;
+    totalCredentialsIssued = 0;
+    totalVerifications = 0;
+}
+
+export circuit authorizeProvider(
+    privateAdminSecret: Bytes<32>,
+    providerCommitment: Bytes<32>
+): [] {
+    const adminHash = disclose(persistentHash<Vector<2, Bytes<32>>>([privateAdminSecret, pad(32, "MEDPROOF_ADMIN")]));
+    assert(adminHash == adminCommitment, "Unauthorized admin operation");
+    authorizedProviders.insert(disclose(providerCommitment), true);
+}
+
+export circuit deauthorizeProvider(
+    privateAdminSecret: Bytes<32>,
+    providerCommitment: Bytes<32>
+): [] {
+    const adminHash = disclose(persistentHash<Vector<2, Bytes<32>>>([privateAdminSecret, pad(32, "MEDPROOF_ADMIN")]));
+    assert(adminHash == adminCommitment, "Unauthorized admin operation");
+    authorizedProviders.insert(disclose(providerCommitment), false);
+}
+
+export circuit issueCredential(
+    privateProviderSecret: Bytes<32>,
+    commitment: Bytes<32>
+): [] {
+    assert(isContractActive, "Contract is not active");
+    const providerCommitment = disclose(persistentHash<Vector<2, Bytes<32>>>([privateProviderSecret, pad(32, "MEDPROOF_PROVIDER")]));
+    assert(authorizedProviders.member(providerCommitment) && authorizedProviders.lookup(providerCommitment) == true, "Provider is not authorized to issue credentials");
+    
+    const commitmentDisclosed = disclose(commitment);
+    assert(!issuedCredentials.member(commitmentDisclosed), "Credential commitment already registered");
+    issuedCredentials.insert(commitmentDisclosed, true);
+    credentialIssuers.insert(commitmentDisclosed, providerCommitment);
+    totalCredentialsIssued = (totalCredentialsIssued + 1) as Uint<64>;
+}
+
+export circuit revokeCredential(
+    callerSecret: Bytes<32>,
+    isCallerAdmin: Boolean,
+    commitment: Bytes<32>
+): [] {
+    assert(isContractActive, "Contract is not active");
+    const commitmentDisclosed = disclose(commitment);
+    assert(issuedCredentials.member(commitmentDisclosed), "Target credential was not registered");
+
+    if (disclose(isCallerAdmin)) {
+        const adminHash = disclose(persistentHash<Vector<2, Bytes<32>>>([callerSecret, pad(32, "MEDPROOF_ADMIN")]));
+        assert(adminHash == adminCommitment, "Unauthorized admin revocation");
+    } else {
+        const callerProviderCommitment = disclose(persistentHash<Vector<2, Bytes<32>>>([callerSecret, pad(32, "MEDPROOF_PROVIDER")]));
+        assert(credentialIssuers.member(commitmentDisclosed), "Issuer record not found");
+        assert(credentialIssuers.lookup(commitmentDisclosed) == callerProviderCommitment, "Only the issuing provider or admin can revoke this credential");
+    }
+
+    revokedCredentials.insert(commitmentDisclosed, true);
+}
+
+export circuit grantConsent(
+    patientSecret: Bytes<32>,
+    verifierPk: Bytes<32>,
+    credentialCommitment: Bytes<32>
+): Bytes<32> {
+    assert(isContractActive, "Contract is not active");
+    const consentId = disclose(persistentHash<Vector<4, Bytes<32>>>([
+        patientSecret,
+        disclose(verifierPk),
+        disclose(credentialCommitment),
+        pad(32, "MEDPROOF_CONSENT")
+    ]));
+    activeConsents.insert(consentId, true);
+    return consentId;
+}
+
+export circuit revokeConsent(
+    patientSecret: Bytes<32>,
+    verifierPk: Bytes<32>,
+    credentialCommitment: Bytes<32>
+): Bytes<32> {
+    assert(isContractActive, "Contract is not active");
+    const consentId = disclose(persistentHash<Vector<4, Bytes<32>>>([
+        patientSecret,
+        disclose(verifierPk),
+        disclose(credentialCommitment),
+        pad(32, "MEDPROOF_CONSENT")
+    ]));
+    activeConsents.insert(consentId, false);
+    return consentId;
+}
+
+export circuit advanceEpoch(
+    privateAdminSecret: Bytes<32>,
+    newEpoch: Uint<64>
+): [] {
+    const adminHash = disclose(persistentHash<Vector<2, Bytes<32>>>([privateAdminSecret, pad(32, "MEDPROOF_ADMIN")]));
+    assert(adminHash == adminCommitment, "Unauthorized admin operation");
+    const disclosedNewEpoch = disclose(newEpoch);
+    assert(disclosedNewEpoch > currentEpoch, "New epoch must be strictly greater than current epoch");
+    currentEpoch = disclosedNewEpoch;
+}
+
+export circuit setContractActive(
+    privateAdminSecret: Bytes<32>,
+    active: Boolean
+): [] {
+    const adminHash = disclose(persistentHash<Vector<2, Bytes<32>>>([privateAdminSecret, pad(32, "MEDPROOF_ADMIN")]));
+    assert(adminHash == adminCommitment, "Unauthorized admin operation");
+    isContractActive = disclose(active);
+}
+
+export circuit verifyCredential(
+    issuerProviderCommitment: Bytes<32>,
+    verifierPk: Bytes<32>,
+    patientSecret: Bytes<32>,
+    schemaId: Uint<32>,
+    category: Uint<32>,
+    expirationEpoch: Uint<64>,
+    payloadHash: Bytes<32>,
+    salt: Bytes<32>,
+    requiredCategory: Uint<32>,
+    sessionNonce: Bytes<32>,
+    dispenseNullifier: Bytes<32>,
+    isSingleUse: Boolean
+): Bytes<32> {
+    assert(isContractActive, "Contract is not accepting verifications");
+
+    const disclosedIssuerCommitment = disclose(issuerProviderCommitment);
+    assert(authorizedProviders.member(disclosedIssuerCommitment), "Issuer not in authorized provider registry");
+    assert(authorizedProviders.lookup(disclosedIssuerCommitment) == true, "Issuer is not an active authorized provider");
+
+    // 1. Strict Expiration check (expirationEpoch >= currentEpoch is valid; < currentEpoch fails)
+    assert(expirationEpoch >= currentEpoch, "Credential has expired");
+
+    // 2. Strict Category check (category >= requiredCategory is valid; < requiredCategory fails)
+    assert(category >= disclose(requiredCategory), "Credential does not satisfy required category");
+
+    // 3. Recompute COMPLETE 7-element credential commitment inside ZK circuit
+    const patientCommitment = persistentHash<Vector<2, Bytes<32>>>([patientSecret, pad(32, "PATIENT_ID")]);
+    const schemaHash = persistentHash<Uint<32>>(schemaId);
+    const categoryHash = persistentHash<Uint<32>>(category);
+    const epochHash = persistentHash<Uint<64>>(expirationEpoch);
+    const commitment = persistentHash<Vector<7, Bytes<32>>>([
+        disclosedIssuerCommitment,
+        patientCommitment,
+        schemaHash,
+        categoryHash,
+        epochHash,
+        payloadHash,
+        salt
+    ]);
+    const commitmentDisclosed = disclose(commitment);
+
+    // 4. Verify commitment registration on ledger
+    assert(issuedCredentials.member(commitmentDisclosed), "Credential commitment is not registered on ledger");
+
+    // 5. Verify non-revocation
+    assert(!revokedCredentials.member(commitmentDisclosed) || revokedCredentials.lookup(commitmentDisclosed) == false, "Credential has been revoked");
+
+    // 6. Cryptographically bound consent verification
+    const disclosedVerifierPk = disclose(verifierPk);
+    const expectedConsentId = disclose(persistentHash<Vector<4, Bytes<32>>>([
+        patientSecret,
+        disclosedVerifierPk,
+        commitmentDisclosed,
+        pad(32, "MEDPROOF_CONSENT")
+    ]));
+    assert(activeConsents.member(expectedConsentId), "Consent record not found for this patient, verifier, and credential");
+    assert(activeConsents.lookup(expectedConsentId) == true, "Consent has been revoked or is inactive");
+
+    // 7. Single-use dispense nullifier
+    const disclosedSingleUse = disclose(isSingleUse);
+    const disclosedNullifier = disclose(dispenseNullifier);
+    if (disclosedSingleUse) {
+        const expectedNullifier = disclose(persistentHash<Vector<4, Bytes<32>>>([patientSecret, commitment, pad(32, "DISPENSE"), epochHash]));
+        assert(expectedNullifier == disclosedNullifier, "Invalid dispense nullifier derivation");
+        assert(!nullifiers.member(disclosedNullifier), "Prescription has already been dispensed");
+        nullifiers.insert(disclosedNullifier, true);
+    }
+
+    totalVerifications = (totalVerifications + 1) as Uint<64>;
+
+    // 8. Return randomized/session verification receipt to prevent verifier linkability
+    const receipt = persistentHash<Vector<4, Bytes<32>>>([
+        commitment,
+        disclosedVerifierPk,
+        disclose(sessionNonce),
+        pad(32, "RECEIPT")
+    ]);
+    return disclose(receipt);
+}

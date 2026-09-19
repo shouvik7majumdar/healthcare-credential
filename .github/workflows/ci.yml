@@ -39,15 +39,15 @@ jobs:
 
       - name: Compile Compact Contracts
         run: |
-          $HOME/.local/bin/compact compile contracts/prescription-verifier.compact contracts/managed/prescription-verifier
+          $HOME/.local/bin/compact compile contracts/medproof.compact contracts/managed/medproof
 
       - name: Verify Generated Contract Artifacts
         run: |
-          test -f contracts/managed/prescription-verifier/contract/index.js
-          test -f contracts/managed/prescription-verifier/contract/index.d.ts
+          test -f contracts/managed/medproof/contract/index.js
+          test -f contracts/managed/medproof/contract/index.d.ts
           echo "✅ Managed contract artifacts verified successfully."
 
-      - name: Run Tests
+      - name: Run Automated Test Suite
         run: npm test
 
       - name: Setup Node.js for UI
@@ -62,14 +62,15 @@ jobs:
           cd ui
           npm ci
 
-      - name: Build Frontend (UI)
+      - name: Build MedProof Next.js UI
         env:
-          VITE_NETWORK: preview
-          VITE_CONTRACT_ADDRESS: 54b40b55db6c344ddb1511d13c93e2bbbb280b4c1738b912cd838f5ac94df8dc
-          VITE_PROOF_SERVER_URL: https://proof-server.preview.midnight.network
-          VITE_INDEXER_URL: https://indexer.preview.midnight.network/api/v4/graphql
-          VITE_INDEXER_WS_URL: wss://indexer.preview.midnight.network/api/v4/graphql/ws
+          NEXT_PUBLIC_MIDNIGHT_NETWORK: preprod
+          NEXT_PUBLIC_CONTRACT_ADDRESS: 94499a3a15d5818967c5d8acc562daa1656ca07eb873cdfd4eca50d681def626
+          NEXT_PUBLIC_INDEXER_URI: https://indexer.preprod.midnight.network/api/v4/graphql
+          NEXT_PUBLIC_INDEXER_WS_URI: wss://indexer.preprod.midnight.network/api/v4/graphql/ws
+          NEXT_PUBLIC_PROOF_SERVER_URI: http://127.0.0.1:6300
+          NEXT_PUBLIC_NETWORK_ID: undeployed
         run: |
           cd ui
           npm run build
-          echo "✅ UI built successfully."
+          echo "✅ MedProof Next.js UI built successfully."

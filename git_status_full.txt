@@ -1,0 +1,157 @@
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add/rm <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   package.json
+	modified:   scripts/e2e-check.ts
+	modified:   src/deploy.ts
+	modified:   src/wallet.ts
+	modified:   ui/.env
+	modified:   ui/.gitignore
+	modified:   ui/package-lock.json
+	modified:   ui/package.json
+	deleted:    ui/src/App.tsx
+	deleted:    ui/src/components/AnalyticsDashboard.tsx
+	deleted:    ui/src/components/DoctorPortal.tsx
+	deleted:    ui/src/components/Header.tsx
+	deleted:    ui/src/components/LedgerState.tsx
+	deleted:    ui/src/components/PatientDashboard.tsx
+	deleted:    ui/src/components/PharmacyPortal.tsx
+	deleted:    ui/src/components/PrescriptionVerifier.tsx
+	deleted:    ui/src/components/PrescriptionViewModal.tsx
+	deleted:    ui/src/components/PrivacyModel.tsx
+	deleted:    ui/src/components/QRCodeModal.tsx
+	deleted:    ui/src/components/Toast.tsx
+	deleted:    ui/src/components/VerificationHistory.tsx
+	deleted:    ui/src/components/WalletConnect.tsx
+	deleted:    ui/src/main.tsx
+	deleted:    ui/src/wallet-service.ts
+	modified:   ui/tsconfig.json
+	modified:   vercel.json
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	MEDPROOF_RESUME_LATER.md
+	contracts/managed/medproof/compiler/contract-info.json
+	contracts/managed/medproof/contract/index.d.ts
+	contracts/managed/medproof/contract/index.js
+	contracts/managed/medproof/contract/index.js.map
+	contracts/managed/medproof/keys/advanceEpoch.prover
+	contracts/managed/medproof/keys/advanceEpoch.verifier
+	contracts/managed/medproof/keys/authorizeProvider.prover
+	contracts/managed/medproof/keys/authorizeProvider.verifier
+	contracts/managed/medproof/keys/deauthorizeProvider.prover
+	contracts/managed/medproof/keys/deauthorizeProvider.verifier
+	contracts/managed/medproof/keys/grantConsent.prover
+	contracts/managed/medproof/keys/grantConsent.verifier
+	contracts/managed/medproof/keys/issueCredential.prover
+	contracts/managed/medproof/keys/issueCredential.verifier
+	contracts/managed/medproof/keys/revokeConsent.prover
+	contracts/managed/medproof/keys/revokeConsent.verifier
+	contracts/managed/medproof/keys/revokeCredential.prover
+	contracts/managed/medproof/keys/revokeCredential.verifier
+	contracts/managed/medproof/keys/setContractActive.prover
+	contracts/managed/medproof/keys/setContractActive.verifier
+	contracts/managed/medproof/keys/verifyCredential.prover
+	contracts/managed/medproof/keys/verifyCredential.verifier
+	contracts/managed/medproof/zkir/advanceEpoch.bzkir
+	contracts/managed/medproof/zkir/advanceEpoch.zkir
+	contracts/managed/medproof/zkir/authorizeProvider.bzkir
+	contracts/managed/medproof/zkir/authorizeProvider.zkir
+	contracts/managed/medproof/zkir/deauthorizeProvider.bzkir
+	contracts/managed/medproof/zkir/deauthorizeProvider.zkir
+	contracts/managed/medproof/zkir/grantConsent.bzkir
+	contracts/managed/medproof/zkir/grantConsent.zkir
+	contracts/managed/medproof/zkir/issueCredential.bzkir
+	contracts/managed/medproof/zkir/issueCredential.zkir
+	contracts/managed/medproof/zkir/revokeConsent.bzkir
+	contracts/managed/medproof/zkir/revokeConsent.zkir
+	contracts/managed/medproof/zkir/revokeCredential.bzkir
+	contracts/managed/medproof/zkir/revokeCredential.zkir
+	contracts/managed/medproof/zkir/setContractActive.bzkir
+	contracts/managed/medproof/zkir/setContractActive.zkir
+	contracts/managed/medproof/zkir/verifyCredential.bzkir
+	contracts/managed/medproof/zkir/verifyCredential.zkir
+	contracts/medproof.compact
+	git_diff_checkpoint_2026-09-18.patch
+	git_status_full.txt
+	medproof_before_fresh_preprod_deployment_checkpoint.md
+	medproof_day2_resume_report.md
+	medproof_deployment_truth_check.md
+	medproof_final_dust_gate_report.md
+	medproof_level4_feature_upgrade_report.md
+	medproof_phase6b1_real_input_provenance_report.md
+	medproof_session_checkpoint_2026-09-17.md
+	resume_medproof_from_checkpoint.sh
+	scripts/check_contract_schema.py
+	scripts/check_dust_params.ts
+	scripts/check_dust_state.py
+	scripts/check_node_time.py
+	scripts/check_preprod_contract.py
+	scripts/check_time.py
+	scripts/check_utxo.py
+	scripts/decode_doc.py
+	scripts/extract_lace_api.py
+	scripts/fetch_issue.py
+	scripts/find_pallet.py
+	scripts/find_pallet_details.py
+	scripts/inspect_dust.ts
+	scripts/metadata.hex
+	scripts/run.sh
+	scripts/test_dust_prep.ts
+	scripts/test_dust_reg.ts
+	scripts/test_find_deployed.mjs
+	scripts/test_full_circuit.mjs
+	scripts/test_reg_fix.ts
+	scripts/update_deploy_dust.py
+	scripts/update_wallet_clock.py
+	scripts/verify_dust_finality.ts
+	tests/level4-ux-upgrade.test.ts
+	tests/medproof-contract.test.ts
+	tests/ui-nextjs-integration.test.ts
+	ui/legacy-vite/AnalyticsDashboard.tsx
+	ui/legacy-vite/App.tsx
+	ui/legacy-vite/DoctorPortal.tsx
+	ui/legacy-vite/Header.tsx
+	ui/legacy-vite/LedgerState.tsx
+	ui/legacy-vite/PatientDashboard.tsx
+	ui/legacy-vite/PharmacyPortal.tsx
+	ui/legacy-vite/PrescriptionVerifier.tsx
+	ui/legacy-vite/PrescriptionViewModal.tsx
+	ui/legacy-vite/PrivacyModel.tsx
+	ui/legacy-vite/QRCodeModal.tsx
+	ui/legacy-vite/Toast.tsx
+	ui/legacy-vite/VerificationHistory.tsx
+	ui/legacy-vite/WalletConnect.tsx
+	ui/legacy-vite/main.tsx
+	ui/legacy-vite/wallet-service.ts
+	ui/next-env.d.ts
+	ui/next.config.mjs
+	ui/src/app/consent/page.tsx
+	ui/src/app/credentials/page.tsx
+	ui/src/app/globals.css
+	ui/src/app/layout.tsx
+	ui/src/app/page.tsx
+	ui/src/app/patient/page.tsx
+	ui/src/app/privacy/page.tsx
+	ui/src/app/provider/page.tsx
+	ui/src/app/verifier/page.tsx
+	ui/src/components/navigation/Header.tsx
+	ui/src/components/navigation/SystemStatusBar.tsx
+	ui/src/components/wallet/WalletModal.tsx
+	ui/src/context/MedProofDataContext.tsx
+	ui/src/context/WalletContext.tsx
+	ui/src/hooks/useLaceWallet.ts
+	ui/src/lib/config.ts
+	ui/src/lib/crypto.ts
+	ui/src/next-env.d.ts
+	ui/src/services/lace-wallet-service.ts
+	ui/src/services/medproof-contract.ts
+	ui/src/services/midnight-indexer.ts
+	ui/src/types/medproof.ts
+	ui/src/types/wallet.ts
+	ui/tsconfig.tsbuildinfo
+
+no changes added to commit (use "git add" and/or "git commit -a")

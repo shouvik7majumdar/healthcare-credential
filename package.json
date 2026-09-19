@@ -6,7 +6,7 @@
   "author": "",
   "license": "MIT",
   "scripts": {
-    "compile": "compact compile contracts/prescription-verifier.compact contracts/managed/prescription-verifier || $HOME/.local/bin/compact compile contracts/prescription-verifier.compact contracts/managed/prescription-verifier",
+    "compile": "compact compile contracts/medproof.compact contracts/managed/medproof || $HOME/.local/bin/compact compile contracts/medproof.compact contracts/managed/medproof",
     "build": "cd ui && npm install && npm run build",
     "setup": "npx tsx src/setup.ts",
     "deploy": "npx tsx src/deploy.ts",

@@ -1,0 +1,4652 @@
+diff --git a/package.json b/package.json
+index 22ae407..605e1f2 100644
+--- a/package.json
++++ b/package.json
+@@ -6,7 +6,7 @@
+   "author": "",
+   "license": "MIT",
+   "scripts": {
+-    "compile": "compact compile contracts/prescription-verifier.compact contracts/managed/prescription-verifier || $HOME/.local/bin/compact compile contracts/prescription-verifier.compact contracts/managed/prescription-verifier",
++    "compile": "compact compile contracts/medproof.compact contracts/managed/medproof || $HOME/.local/bin/compact compile contracts/medproof.compact contracts/managed/medproof",
+     "build": "cd ui && npm install && npm run build",
+     "setup": "npx tsx src/setup.ts",
+     "deploy": "npx tsx src/deploy.ts",
+@@ -48,4 +48,4 @@
+     "node": ">=22.0.0"
+   },
+   "keywords": ["midnight", "blockchain", "zero-knowledge", "privacy", "prescription", "healthcare"]
+-}
+\ No newline at end of file
++}
+diff --git a/scripts/e2e-check.ts b/scripts/e2e-check.ts
+index cbe75e3..9837551 100644
+--- a/scripts/e2e-check.ts
++++ b/scripts/e2e-check.ts
+@@ -1,130 +1,130 @@
+-/**
+- * End-to-end smoke check for my-first-midnight-app.
+- *
+- * Reconnects to the deployed contract, reads its ledger state, and exits 0
+- * on success. Used by `npm run test:e2e` and by the project's CI workflows.
+- */
+-import * as fs from 'node:fs';
+-import * as path from 'node:path';
+-import { fileURLToPath, pathToFileURL } from 'node:url';
+-import { WebSocket } from 'ws';
+-
+-import { findDeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
+-import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
+-import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+-import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
+-import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
+-import { resolveNetwork, getOrCreateSeed, getDeployment } from '../src/network';
+-import { createWallet, persistWalletState } from '../src/wallet';
+-import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+-
+-// @ts-expect-error wallet sync requires WebSocket
+-globalThis.WebSocket = WebSocket;
+-
+-// Must match the privateStateId used at deploy time (witness-free → empty state).
+-const PRIVATE_STATE_ID = 'helloWorldPrivateState';
+-
+-// ─── Network configuration ─────────────────────────────────────────────────────
+-
+-const { network, config: networkConfig } = resolveNetwork();
+-const SEED = getOrCreateSeed(network);
+-
+-function fail(msg: string): never {
+-  console.error(`❌ e2e-check failed: ${msg}`);
+-  process.exit(1);
+-}
+-
+-function isHexAddress(s: unknown): s is string {
+-  return typeof s === 'string' && /^[0-9a-fA-F]+$/.test(s) && s.length >= 32;
+-}
+-
+-async function main() {
+-  // 1. Deployment sanity
+-  const deployment = getDeployment(network);
+-  if (!deployment) {
+-    console.error(`No deploy on file for network ${network}.`);
+-    process.exit(1);
+-  }
+-  if (!isHexAddress(deployment.address)) {
+-    fail(`Deployment address missing or invalid: ${JSON.stringify(deployment, null, 2)}`);
+-  }
+-
+-  // 2. Build wallet and providers
+-  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+-  const zkConfigPath = path.resolve(__dirname, '..', 'contracts', 'managed', 'hello-world');
+-  const contractPath = path.join(zkConfigPath, 'contract', 'index.js');
+-  if (!fs.existsSync(contractPath)) fail('Compiled contract missing — run `npm run compile`.');
+-  const HelloWorld = await import(pathToFileURL(contractPath).href);
+-  const compiledContract = CompiledContract.make('hello-world', HelloWorld.Contract).pipe(
+-    CompiledContract.withVacantWitnesses,
+-    CompiledContract.withCompiledFileAssets(zkConfigPath),
+-  );
+-
+-  const walletCtx = await createWallet({ network, networkConfig, seed: SEED });
+-  await walletCtx.wallet.waitForSyncedState();
+-  // Persist the sync state — saves time on the next e2e-check invocation in CI
+-  // when run against the same persistent wallet directory.
+-  await persistWalletState(network, walletCtx);
+-
+-  const zkConfigProvider = new NodeZkConfigProvider(zkConfigPath);
+-  const walletProvider = {
+-    // Midnight.js 4.1.x returns the key objects (CoinPublicKey / EncPublicKey).
+-    getCoinPublicKey: () => walletCtx.shieldedSecretKeys.coinPublicKey,
+-    getEncryptionPublicKey: () => walletCtx.shieldedSecretKeys.encryptionPublicKey,
+-    async balanceTx() {
+-      throw new Error('e2e-check is read-only and should not balance transactions');
+-    },
+-    submitTx() {
+-      throw new Error('e2e-check is read-only and should not submit transactions');
+-    },
+-  } as any;
+-
+-  const providers = {
+-    privateStateProvider: levelPrivateStateProvider({
+-      privateStateStoreName: 'hello-world-state',
+-      accountId: walletCtx.unshieldedKeystore.getBech32Address().toString(),
+-      // SDK requires ≥16 chars. e2e-check is read-only so we don't expose
+-      // the env-var override here — match the deploy script's local-devnet default.
+-      privateStoragePasswordProvider: () => 'Local-Devnet-Development-Placeholder-1',
+-    }),
+-    publicDataProvider: indexerPublicDataProvider(networkConfig.indexer, networkConfig.indexerWS),
+-    zkConfigProvider,
+-    proofProvider: httpClientProofProvider(networkConfig.proofServer, zkConfigProvider),
+-    walletProvider,
+-    midnightProvider: walletProvider,
+-  };
+-
+-  // 3. Reconnect to the deployed contract — proves callTx interface is wired
+-  try {
+-    await findDeployedContract(providers, {
+-      contractAddress: deployment.address,
+-      compiledContract: compiledContract as any,
+-      privateStateId: PRIVATE_STATE_ID,
+-      initialPrivateState: {},
+-    });
+-  } catch (err: any) {
+-    await walletCtx.wallet.stop();
+-    fail(`findDeployedContract threw: ${err?.message ?? err}`);
+-  }
+-
+-  // 4. Read the on-chain contract state via the public data provider — proves
+-  // the contract is indexed and queryable on the chain itself, not just that
+-  // we know how to construct the local handle.
+-  const onChainState = await providers.publicDataProvider.queryContractState(deployment.address);
+-  if (!onChainState) {
+-    await walletCtx.wallet.stop();
+-    fail(`queryContractState returned null for ${deployment.address}`);
+-  }
+-
+-  console.log(`✅ e2e-check passed`);
+-  console.log(`   contractAddress: ${deployment.address}`);
+-  console.log(`   network:         ${network}`);
+-
+-  await walletCtx.wallet.stop();
+-  process.exit(0);
+-}
+-
+-main().catch(async (err) => {
+-  console.error(err);
+-  process.exit(1);
+-});
++/**
++ * End-to-end smoke check for my-first-midnight-app.
++ *
++ * Reconnects to the deployed contract, reads its ledger state, and exits 0
++ * on success. Used by `npm run test:e2e` and by the project's CI workflows.
++ */
++import * as fs from 'node:fs';
++import * as path from 'node:path';
++import { fileURLToPath, pathToFileURL } from 'node:url';
++import { WebSocket } from 'ws';
++
++import { findDeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
++import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
++import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
++import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
++import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
++import { resolveNetwork, getOrCreateSeed, getDeployment } from '../src/network';
++import { createWallet, persistWalletState } from '../src/wallet';
++import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
++
++// @ts-expect-error wallet sync requires WebSocket
++globalThis.WebSocket = WebSocket;
++
++// Must match the privateStateId used at deploy time (witness-free → empty state).
++const PRIVATE_STATE_ID = 'helloWorldPrivateState';
++
++// ─── Network configuration ─────────────────────────────────────────────────────
++
++const { network, config: networkConfig } = resolveNetwork();
++const SEED = getOrCreateSeed(network);
++
++function fail(msg: string): never {
++  console.error(`❌ e2e-check failed: ${msg}`);
++  process.exit(1);
++}
++
++function isHexAddress(s: unknown): s is string {
++  return typeof s === 'string' && /^[0-9a-fA-F]+$/.test(s) && s.length >= 32;
++}
++
++async function main() {
++  // 1. Deployment sanity
++  const deployment = getDeployment(network);
++  if (!deployment) {
++    console.error(`No deploy on file for network ${network}.`);
++    process.exit(1);
++  }
++  if (!isHexAddress(deployment.address)) {
++    fail(`Deployment address missing or invalid: ${JSON.stringify(deployment, null, 2)}`);
++  }
++
++  // 2. Build wallet and providers
++  const __dirname = path.dirname(fileURLToPath(import.meta.url));
++  const zkConfigPath = path.resolve(__dirname, '..', 'contracts', 'managed', 'hello-world');
++  const contractPath = path.join(zkConfigPath, 'contract', 'index.js');
++  if (!fs.existsSync(contractPath)) fail('Compiled contract missing — run `npm run compile`.');
++  const HelloWorld = await import(pathToFileURL(contractPath).href);
++  const compiledContract = CompiledContract.make('hello-world', HelloWorld.Contract).pipe(
++    CompiledContract.withVacantWitnesses,
++    CompiledContract.withCompiledFileAssets(zkConfigPath),
++  );
++
++  const walletCtx = await createWallet({ network, networkConfig, seed: SEED });
++  await walletCtx.wallet.waitForSyncedState();
++  // Persist the sync state — saves time on the next e2e-check invocation in CI
++  // when run against the same persistent wallet directory.
++  await persistWalletState(network, walletCtx);
++
++  const zkConfigProvider = new NodeZkConfigProvider(zkConfigPath);
++  const walletProvider = {
++    // Midnight.js 4.1.x returns the key objects (CoinPublicKey / EncPublicKey).
++    getCoinPublicKey: () => walletCtx.shieldedSecretKeys.coinPublicKey,
++    getEncryptionPublicKey: () => walletCtx.shieldedSecretKeys.encryptionPublicKey,
++    async balanceTx() {
++      throw new Error('e2e-check is read-only and should not balance transactions');
++    },
++    submitTx() {
++      throw new Error('e2e-check is read-only and should not submit transactions');
++    },
++  } as any;
++
++  const providers = {
++    privateStateProvider: levelPrivateStateProvider({
++      privateStateStoreName: 'hello-world-state',
++      accountId: walletCtx.unshieldedKeystore.getBech32Address().toString(),
++      // SDK requires ≥16 chars. e2e-check is read-only so we don't expose
++      // the env-var override here — match the deploy script's local-devnet default.
++      privateStoragePasswordProvider: () => 'Local-Devnet-Development-Placeholder-1',
++    }),
++    publicDataProvider: indexerPublicDataProvider(networkConfig.indexer, networkConfig.indexerWS),
++    zkConfigProvider,
++    proofProvider: httpClientProofProvider(networkConfig.proofServer, zkConfigProvider),
++    walletProvider,
++    midnightProvider: walletProvider,
++  };
++
++  // 3. Reconnect to the deployed contract — proves callTx interface is wired
++  try {
++    await findDeployedContract(providers, {
++      contractAddress: deployment.address,
++      compiledContract: compiledContract as any,
++      privateStateId: PRIVATE_STATE_ID,
++      initialPrivateState: {},
++    });
++  } catch (err: any) {
++    await walletCtx.wallet.stop();
++    fail(`findDeployedContract threw: ${err?.message ?? err}`);
++  }
++
++  // 4. Read the on-chain contract state via the public data provider — proves
++  // the contract is indexed and queryable on the chain itself, not just that
++  // we know how to construct the local handle.
++  const onChainState = await providers.publicDataProvider.queryContractState(deployment.address);
++  if (!onChainState) {
++    await walletCtx.wallet.stop();
++    fail(`queryContractState returned null for ${deployment.address}`);
++  }
++
++  console.log(`✅ e2e-check passed`);
++  console.log(`   contractAddress: ${deployment.address}`);
++  console.log(`   network:         ${network}`);
++
++  await walletCtx.wallet.stop();
++  process.exit(0);
++}
++
++main().catch(async (err) => {
++  console.error(err);
++  process.exit(1);
++});
+diff --git a/src/deploy.ts b/src/deploy.ts
+index 02e8402..9c15856 100644
+--- a/src/deploy.ts
++++ b/src/deploy.ts
+@@ -1,4 +1,4 @@
+-// deploy.ts — Deploy the confidential-prescription-verifier contract.
++// deploy.ts — Deploy the hardened MedProof smart contract to Midnight Network.
+ 
+ import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
+ import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
+@@ -7,34 +7,63 @@ import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-pri
+ import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
+ import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+ import path from 'node:path';
+-import { fileURLToPath } from 'node:url';
++import { fileURLToPath, pathToFileURL } from 'node:url';
++import crypto from 'node:crypto';
+ import * as Rx from 'rxjs';
+ import {
+   resolveNetwork, parseNetworkFlag, setActiveNetwork,
+   getOrCreateSeed, recordDeployment, GENESIS_SEED,
+ } from './network.js';
+ import { createWallet, persistWalletState, unshieldedToken } from './wallet.js';
+-import { prescriptionWitnesses, emptyPrivateState } from './prescription-witnesses.js';
+ 
+ const __dirname = path.dirname(fileURLToPath(import.meta.url));
+-const zkConfigPath = path.resolve(__dirname, '../contracts/managed/prescription-verifier');
++const zkConfigPath = path.resolve(__dirname, '../contracts/managed/medproof');
+ 
+-import { pathToFileURL } from 'node:url';
+ const contractUrl = pathToFileURL(path.join(zkConfigPath, 'contract/index.js')).href;
+ const { Contract } = await import(contractUrl) as any;
+ 
+-const compiledContract = (CompiledContract as any).withCompiledFileAssets(
+-  (CompiledContract as any).withWitnesses((CompiledContract as any).make('prescription-verifier', Contract), prescriptionWitnesses),
++const medproofWitnesses = {};
++
++export const compiledContract = (CompiledContract as any).withCompiledFileAssets(
++  (CompiledContract as any).withWitnesses((CompiledContract as any).make('medproof', Contract), medproofWitnesses),
+   zkConfigPath,
+ );
+ 
+-const PRIVATE_STATE_ID = 'prescription-verifier-state';
++export const PRIVATE_STATE_ID = 'medproof-private-state';
++export const emptyPrivateState = {};
++
++export function getOrDeriveAdminCommitment(): Uint8Array {
++  const envCommitment = process.env.MEDPROOF_ADMIN_COMMITMENT?.trim();
++  if (envCommitment) {
++    const clean = envCommitment.startsWith('0x') ? envCommitment.slice(2) : envCommitment;
++    if (clean.length === 64) {
++      return Uint8Array.from(Buffer.from(clean, 'hex'));
++    }
++  }
++
++  const envSecret = process.env.MEDPROOF_ADMIN_SECRET?.trim();
++  if (envSecret) {
++    const clean = envSecret.startsWith('0x') ? envSecret.slice(2) : envSecret;
++    const secretBuf = Buffer.from(clean, 'hex');
++    const pad = Buffer.alloc(32);
++    pad.write('MEDPROOF_ADMIN');
++    const hash = crypto.createHash('sha256').update(Buffer.concat([secretBuf, pad])).digest();
++    return Uint8Array.from(hash);
++  }
++
++  // Default secure 32-byte admin commitment derived for standard deployment
++  return Uint8Array.from(crypto.randomBytes(32));
++}
+ 
+ async function waitForProofServer(url: string, timeoutMs = 30000): Promise<boolean> {
+   const start = Date.now();
+   while (Date.now() - start < timeoutMs) {
+     try {
+       const resp = await fetch(`${url}/provingKey`).catch(() => null);
++      if (resp && resp.status !== 502 && resp.status !== 503) return true;
++    } catch { /* ignore */ }
++    try {
++      const resp = await fetch(url).catch(() => null);
+       if (resp) return true;
+     } catch { /* ignore */ }
+     await new Promise(r => setTimeout(r, 2000));
+@@ -45,7 +74,7 @@ async function waitForProofServer(url: string, timeoutMs = 30000): Promise<boole
+ async function createProviders(walletCtx: any, networkConfig: any) {
+   const zkConfigProvider = new NodeZkConfigProvider(zkConfigPath);
+   const accountId = walletCtx.unshieldedKeystore.getBech32Address().toString();
+-  const privateStatePassword = process.env.PRIVATE_STATE_PASSWORD?.trim() || 'Local-Devnet-Prescription-1';
++  const privateStatePassword = process.env.PRIVATE_STATE_PASSWORD?.trim() || 'Local-Devnet-MedProof-1';
+ 
+   const walletProvider = {
+     getCoinPublicKey: () => walletCtx.shieldedSecretKeys.coinPublicKey,
+@@ -81,13 +110,13 @@ async function main(): Promise<void> {
+   if (flag) setActiveNetwork(flag);
+   const { network, config: networkConfig } = resolveNetwork({ argv });
+ 
+-  console.log('\n─── Confidential Prescription Verifier — Deploy ──────────────────\n');
++  console.log('\n─── MedProof Confidential Credential Exchange — Deploy ──────────────\n');
+   console.log(`  Network: ${network}`);
+   console.log(`  Node:    ${networkConfig.node}`);
+   console.log(`  Indexer: ${networkConfig.indexer}\n`);
+ 
+   const SEED = network === 'undeployed' ? GENESIS_SEED : getOrCreateSeed(network);
+-  const walletCtx = await createWallet({ network, networkConfig, seed: SEED });
++  const walletCtx = await createWallet({ network, networkConfig, seed: SEED, restore: true });
+ 
+   console.log('─── Wallet Setup ─────────────────────────────────────────────\n');
+   console.log('  Syncing wallet...');
+@@ -152,7 +181,7 @@ async function main(): Promise<void> {
+   console.log('  DUST ready!\n');
+ 
+   // Deploy
+-  console.log('─── Deploy Contract ──────────────────────────────────────────\n');
++  console.log('─── Deploy MedProof Contract ─────────────────────────────────\n');
+   if (!(await waitForProofServer(networkConfig.proofServer))) {
+     console.log('  ❌ Proof server not responding. Run: docker compose up -d\n');
+     await walletCtx.wallet.stop(); process.exit(1);
+@@ -162,12 +191,15 @@ async function main(): Promise<void> {
+   const providers = await createProviders(walletCtx, networkConfig);
+   await new Promise(r => setTimeout(r, 6000));
+ 
++  const adminCommitment = getOrDeriveAdminCommitment();
++  console.log(`  Admin Commitment: 0x${Buffer.from(adminCommitment).toString('hex')}\n`);
++
+   let deployed: any;
+   for (let attempt = 1; attempt <= 20; attempt++) {
+     try {
+       deployed = await deployContract(providers, {
+         compiledContract,
+-        args: [],
++        args: [adminCommitment],
+         privateStateId: PRIVATE_STATE_ID,
+         initialPrivateState: emptyPrivateState,
+       });
+@@ -185,14 +217,15 @@ async function main(): Promise<void> {
+   if (!deployed) throw new Error('Deployment failed');
+ 
+   const contractAddress = deployed.deployTxData.public.contractAddress;
+-  console.log('  ✅ Contract deployed!\n');
++  console.log('  ✅ MedProof Contract deployed!\n');
+   console.log(`  Contract Address: ${contractAddress}\n`);
+   recordDeployment(network, contractAddress, address.toString());
+   console.log('  Saved to .midnight-state.json\n');
+   await persistWalletState(network, walletCtx);
+   await walletCtx.wallet.stop();
+   console.log('─── Deployment complete ──────────────────────────────────────\n');
+-  console.log('  Next: npm run cli\n');
+ }
+ 
+-main().catch((err) => { console.error(err); process.exit(1); });
+\ No newline at end of file
++if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
++  main().catch((err) => { console.error(err); process.exit(1); });
++}
+diff --git a/src/wallet.ts b/src/wallet.ts
+index c1706a1..99f5cb0 100644
+--- a/src/wallet.ts
++++ b/src/wallet.ts
+@@ -1,195 +1,197 @@
+-// Wallet construction + sync-state restore.
+-//
+-// Mirrors network.ts in structure. The on-disk format and pure I/O live in
+-// wallet-state.ts (unit-tested from the scaffolder workspace, no SDK deps);
+-// this file is the glue between that format and the wallet SDK.
+-
+-import { Buffer } from 'buffer';
+-
+-// Ledger types now come from the midnight-js-protocol barrel, which re-exports
+-// ledger-v8 (8.1.0) under a stable subpath instead of depending on it directly.
+-import * as ledger from '@midnight-ntwrk/midnight-js-protocol/ledger';
+-import { unshieldedToken } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+-import { setNetworkId, getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+-// As of Midnight.js 4.1.x / ledger-v8 8.1.0 the wallet SDK is consolidated behind
+-// the single @midnight-ntwrk/wallet-sdk barrel, which re-exports the former
+-// wallet-sdk-facade / -hd / -shielded / -dust-wallet / -unshielded-wallet packages.
+-import {
+-  WalletFacade,
+-  DustWallet,
+-  HDWallet,
+-  Roles,
+-  ShieldedWallet,
+-  createKeystore,
+-  NoOpTransactionHistoryStorage,
+-  PublicKey,
+-  UnshieldedWallet,
+-} from '@midnight-ntwrk/wallet-sdk';
+-
+-import type { NetworkConfig, NetworkId } from './network';
+-import {
+-  CHILD_KINDS,
+-  loadWalletState,
+-  saveWalletState,
+-  type ChildKind,
+-  type PersistedWalletState,
+-} from './wallet-state';
+-
+-export { unshieldedToken };
+-export type { PersistedWalletState };
+-export {
+-  loadWalletState,
+-  saveWalletState,
+-  clearWalletState,
+-  WALLET_STATE_DIR,
+-  WALLET_STATE_VERSION,
+-} from './wallet-state';
+-
+-function deriveKeys(seed: string) {
+-  const hdWallet = HDWallet.fromSeed(Buffer.from(seed, 'hex'));
+-  if (hdWallet.type !== 'seedOk') throw new Error('Invalid seed');
+-  const result = hdWallet.hdWallet
+-    .selectAccount(0)
+-    .selectRoles([Roles.Zswap, Roles.NightExternal, Roles.Dust])
+-    .deriveKeysAt(0);
+-  if (result.type !== 'keysDerived') throw new Error('Key derivation failed');
+-  hdWallet.hdWallet.clear();
+-  return result.keys;
+-}
+-
+-export interface WalletContext {
+-  wallet: Awaited<ReturnType<typeof WalletFacade.init>>;
+-  shieldedSecretKeys: ReturnType<typeof ledger.ZswapSecretKeys.fromSeed>;
+-  dustSecretKey: ReturnType<typeof ledger.DustSecretKey.fromSeed>;
+-  unshieldedKeystore: ReturnType<typeof createKeystore>;
+-  restored: { shielded: boolean; unshielded: boolean; dust: boolean };
+-}
+-
+-export interface CreateWalletOptions {
+-  network: NetworkId;
+-  networkConfig: NetworkConfig;
+-  seed: string;
+-  /**
+-   * Whether to attempt to restore each child wallet from saved state.
+-   * Defaults to true. Pass false to force a from-seed sync (used by tests).
+-   */
+-  restore?: boolean;
+-  cwd?: string;
+-}
+-
+-function warnRestoreFailure(kind: ChildKind, err: unknown): void {
+-  const msg = err instanceof Error ? err.message : String(err);
+-  process.stderr.write(`  ⚠ Could not restore ${kind} wallet state (${msg}); falling back to fresh sync.\n`);
+-}
+-
+-/**
+- * Build the wallet facade, restoring each child from saved state when
+- * available and falling back to a from-seed start when not (or when restore
+- * throws, e.g. after an SDK upgrade with an incompatible state format).
+- *
+- * Caller is responsible for `await wallet.waitForSyncedState()` afterwards.
+- */
+-export async function createWallet(opts: CreateWalletOptions): Promise<WalletContext> {
+-  setNetworkId(opts.networkConfig.networkId);
+-
+-  const keys = deriveKeys(opts.seed);
+-  const networkId = getNetworkId();
+-  const shieldedSecretKeys = ledger.ZswapSecretKeys.fromSeed(keys[Roles.Zswap]);
+-  const dustSecretKey = ledger.DustSecretKey.fromSeed(keys[Roles.Dust]);
+-  const unshieldedKeystore = createKeystore(keys[Roles.NightExternal], networkId);
+-
+-  const saved: PersistedWalletState = opts.restore === false
+-    ? {}
+-    : loadWalletState(opts.network, { cwd: opts.cwd });
+-
+-  const restored = { shielded: false, unshielded: false, dust: false };
+-
+-  const walletConfig = {
+-    networkId,
+-    indexerClientConnection: {
+-      indexerHttpUrl: opts.networkConfig.indexer,
+-      indexerWsUrl: opts.networkConfig.indexerWS,
+-    },
+-    provingServerUrl: new URL(opts.networkConfig.proofServer),
+-    relayURL: new URL(opts.networkConfig.node.replace(/^http/, 'ws')),
+-    txHistoryStorage: new NoOpTransactionHistoryStorage(),
+-    costParameters: { additionalFeeOverhead: 300_000_000_000_000n, feeBlocksMargin: 5 },
+-  };
+-
+-  const wallet = await WalletFacade.init({
+-    configuration: walletConfig,
+-    shielded: async (config) => {
+-      const cls = ShieldedWallet(config);
+-      if (saved.shielded !== undefined) {
+-        try {
+-          const restoredWallet = await (cls as any).restore(saved.shielded);
+-          restored.shielded = true;
+-          return restoredWallet;
+-        } catch (err) {
+-          warnRestoreFailure('shielded', err);
+-        }
+-      }
+-      return cls.startWithSecretKeys(shieldedSecretKeys);
+-    },
+-    unshielded: async (config) => {
+-      const cls = UnshieldedWallet(config);
+-      if (saved.unshielded !== undefined) {
+-        try {
+-          const restoredWallet = await (cls as any).restore(saved.unshielded);
+-          restored.unshielded = true;
+-          return restoredWallet;
+-        } catch (err) {
+-          warnRestoreFailure('unshielded', err);
+-        }
+-      }
+-      return cls.startWithPublicKey(PublicKey.fromKeyStore(unshieldedKeystore));
+-    },
+-    dust: async (config) => {
+-      const cls = DustWallet(config);
+-      if (saved.dust !== undefined) {
+-        try {
+-          const restoredWallet = await (cls as any).restore(saved.dust);
+-          restored.dust = true;
+-          return restoredWallet;
+-        } catch (err) {
+-          warnRestoreFailure('dust', err);
+-        }
+-      }
+-      return cls.startWithSecretKey(dustSecretKey, ledger.LedgerParameters.initialParameters().dust);
+-    },
+-  });
+-
+-  await wallet.start(shieldedSecretKeys, dustSecretKey);
+-
+-  return { wallet, shieldedSecretKeys, dustSecretKey, unshieldedKeystore, restored };
+-}
+-
+-/**
+- * Serialize each child wallet's current state and persist it for the next run.
+- * Safe to call multiple times. Logs but does not throw on individual failures —
+- * losing one child's state means the next run re-syncs that child only.
+- */
+-export async function persistWalletState(
+-  network: NetworkId,
+-  ctx: WalletContext,
+-  cwd?: string,
+-): Promise<void> {
+-  const next: PersistedWalletState = {};
+-
+-  for (const kind of CHILD_KINDS) {
+-    try {
+-      const child = (ctx.wallet as unknown as Record<ChildKind, { serializeState: () => Promise<unknown> }>)[kind];
+-      const serialized = await child.serializeState();
+-      if (kind === 'dust') {
+-        next.dust = serialized as string;
+-      } else {
+-        next[kind] = serialized;
+-      }
+-    } catch (err) {
+-      const msg = err instanceof Error ? err.message : String(err);
+-      process.stderr.write(`  ⚠ Could not serialize ${kind} wallet state (${msg}); next run will re-sync.\n`);
+-    }
+-  }
+-
+-  saveWalletState(network, next, { cwd });
+-}
++// Wallet construction + sync-state restore.
++//
++// Mirrors network.ts in structure. The on-disk format and pure I/O live in
++// wallet-state.ts (unit-tested from the scaffolder workspace, no SDK deps);
++// this file is the glue between that format and the wallet SDK.
++
++import { Buffer } from 'buffer';
++
++// Ledger types now come from the midnight-js-protocol barrel, which re-exports
++// ledger-v8 (8.1.0) under a stable subpath instead of depending on it directly.
++import * as ledger from '@midnight-ntwrk/midnight-js-protocol/ledger';
++import { unshieldedToken } from '@midnight-ntwrk/midnight-js-protocol/ledger';
++import { setNetworkId, getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
++// As of Midnight.js 4.1.x / ledger-v8 8.1.0 the wallet SDK is consolidated behind
++// the single @midnight-ntwrk/wallet-sdk barrel, which re-exports the former
++// wallet-sdk-facade / -hd / -shielded / -dust-wallet / -unshielded-wallet packages.
++import {
++  WalletFacade,
++  DustWallet,
++  HDWallet,
++  Roles,
++  ShieldedWallet,
++  createKeystore,
++  NoOpTransactionHistoryStorage,
++  PublicKey,
++  UnshieldedWallet,
++} from '@midnight-ntwrk/wallet-sdk';
++
++import type { NetworkConfig, NetworkId } from './network';
++import {
++  CHILD_KINDS,
++  loadWalletState,
++  saveWalletState,
++  type ChildKind,
++  type PersistedWalletState,
++} from './wallet-state';
++
++export { unshieldedToken };
++export type { PersistedWalletState };
++export {
++  loadWalletState,
++  saveWalletState,
++  clearWalletState,
++  WALLET_STATE_DIR,
++  WALLET_STATE_VERSION,
++} from './wallet-state';
++
++function deriveKeys(seed: string) {
++  const hdWallet = HDWallet.fromSeed(Buffer.from(seed, 'hex'));
++  if (hdWallet.type !== 'seedOk') throw new Error('Invalid seed');
++  const result = hdWallet.hdWallet
++    .selectAccount(0)
++    .selectRoles([Roles.Zswap, Roles.NightExternal, Roles.Dust])
++    .deriveKeysAt(0);
++  if (result.type !== 'keysDerived') throw new Error('Key derivation failed');
++  hdWallet.hdWallet.clear();
++  return result.keys;
++}
++
++export interface WalletContext {
++  wallet: Awaited<ReturnType<typeof WalletFacade.init>>;
++  shieldedSecretKeys: ReturnType<typeof ledger.ZswapSecretKeys.fromSeed>;
++  dustSecretKey: ReturnType<typeof ledger.DustSecretKey.fromSeed>;
++  unshieldedKeystore: ReturnType<typeof createKeystore>;
++  restored: { shielded: boolean; unshielded: boolean; dust: boolean };
++}
++
++export interface CreateWalletOptions {
++  network: NetworkId;
++  networkConfig: NetworkConfig;
++  seed: string;
++  /**
++   * Whether to attempt to restore each child wallet from saved state.
++   * Defaults to true. Pass false to force a from-seed sync (used by tests).
++   */
++  restore?: boolean;
++  cwd?: string;
++  clock?: (config: any) => { now: () => Date };
++}
++
++function warnRestoreFailure(kind: ChildKind, err: unknown): void {
++  const msg = err instanceof Error ? err.message : String(err);
++  process.stderr.write(`  ⚠ Could not restore ${kind} wallet state (${msg}); falling back to fresh sync.\n`);
++}
++
++/**
++ * Build the wallet facade, restoring each child from saved state when
++ * available and falling back to a from-seed start when not (or when restore
++ * throws, e.g. after an SDK upgrade with an incompatible state format).
++ *
++ * Caller is responsible for `await wallet.waitForSyncedState()` afterwards.
++ */
++export async function createWallet(opts: CreateWalletOptions): Promise<WalletContext> {
++  setNetworkId(opts.networkConfig.networkId);
++
++  const keys = deriveKeys(opts.seed);
++  const networkId = getNetworkId();
++  const shieldedSecretKeys = ledger.ZswapSecretKeys.fromSeed(keys[Roles.Zswap]);
++  const dustSecretKey = ledger.DustSecretKey.fromSeed(keys[Roles.Dust]);
++  const unshieldedKeystore = createKeystore(keys[Roles.NightExternal], networkId);
++
++  const saved: PersistedWalletState = opts.restore === false
++    ? {}
++    : loadWalletState(opts.network, { cwd: opts.cwd });
++
++  const restored = { shielded: false, unshielded: false, dust: false };
++
++  const walletConfig = {
++    networkId,
++    indexerClientConnection: {
++      indexerHttpUrl: opts.networkConfig.indexer,
++      indexerWsUrl: opts.networkConfig.indexerWS,
++    },
++    provingServerUrl: new URL(opts.networkConfig.proofServer),
++    relayURL: new URL(opts.networkConfig.node.replace(/^http/, 'ws')),
++    txHistoryStorage: new NoOpTransactionHistoryStorage(),
++    costParameters: { additionalFeeOverhead: 300_000_000_000_000n, feeBlocksMargin: 5 },
++  };
++
++  const wallet = await WalletFacade.init({
++    configuration: walletConfig,
++    clock: opts.clock ?? (() => ({ now: () => new Date(Date.now() - 60_000) })),
++    shielded: async (config) => {
++      const cls = ShieldedWallet(config);
++      if (saved.shielded !== undefined) {
++        try {
++          const restoredWallet = await (cls as any).restore(saved.shielded);
++          restored.shielded = true;
++          return restoredWallet;
++        } catch (err) {
++          warnRestoreFailure('shielded', err);
++        }
++      }
++      return cls.startWithSecretKeys(shieldedSecretKeys);
++    },
++    unshielded: async (config) => {
++      const cls = UnshieldedWallet(config);
++      if (saved.unshielded !== undefined) {
++        try {
++          const restoredWallet = await (cls as any).restore(saved.unshielded);
++          restored.unshielded = true;
++          return restoredWallet;
++        } catch (err) {
++          warnRestoreFailure('unshielded', err);
++        }
++      }
++      return cls.startWithPublicKey(PublicKey.fromKeyStore(unshieldedKeystore));
++    },
++    dust: async (config) => {
++      const cls = DustWallet(config);
++      if (saved.dust !== undefined) {
++        try {
++          const restoredWallet = await (cls as any).restore(saved.dust);
++          restored.dust = true;
++          return restoredWallet;
++        } catch (err) {
++          warnRestoreFailure('dust', err);
++        }
++      }
++      return cls.startWithSecretKey(dustSecretKey, ledger.LedgerParameters.initialParameters().dust);
++    },
++  });
++
++  await wallet.start(shieldedSecretKeys, dustSecretKey);
++
++  return { wallet, shieldedSecretKeys, dustSecretKey, unshieldedKeystore, restored };
++}
++
++/**
++ * Serialize each child wallet's current state and persist it for the next run.
++ * Safe to call multiple times. Logs but does not throw on individual failures —
++ * losing one child's state means the next run re-syncs that child only.
++ */
++export async function persistWalletState(
++  network: NetworkId,
++  ctx: WalletContext,
++  cwd?: string,
++): Promise<void> {
++  const next: PersistedWalletState = {};
++
++  for (const kind of CHILD_KINDS) {
++    try {
++      const child = (ctx.wallet as unknown as Record<ChildKind, { serializeState: () => Promise<unknown> }>)[kind];
++      const serialized = await child.serializeState();
++      if (kind === 'dust') {
++        next.dust = serialized as string;
++      } else {
++        next[kind] = serialized;
++      }
++    } catch (err) {
++      const msg = err instanceof Error ? err.message : String(err);
++      process.stderr.write(`  ⚠ Could not serialize ${kind} wallet state (${msg}); next run will re-sync.\n`);
++    }
++  }
++
++  saveWalletState(network, next, { cwd });
++}
+diff --git a/ui/.env b/ui/.env
+index de6aaf8..4adca75 100644
+--- a/ui/.env
++++ b/ui/.env
+@@ -1,5 +1,17 @@
+-VITE_NETWORK=preview
+-VITE_CONTRACT_ADDRESS=54b40b55db6c344ddb1511d13c93e2bbbb280b4c1738b912cd838f5ac94df8dc
+-VITE_PROOF_SERVER_URL=https://proof-server.preview.midnight.network
+-VITE_INDEXER_URL=https://indexer.preview.midnight.network/api/v4/graphql
+-VITE_INDEXER_WS_URL=wss://indexer.preview.midnight.network/api/v4/graphql/ws
++# MedProof — Midnight Preprod Configuration
++NEXT_PUBLIC_NETWORK=preprod
++NEXT_PUBLIC_MIDNIGHT_NETWORK=preprod
++NEXT_PUBLIC_CONTRACT_ADDRESS=1ccb306f688ec96e8afd44d4bff5f7f6fcc64fdc951ce3e238bf384c29dac9bb
++NEXT_PUBLIC_MEDPROOF_CONTRACT_ADDRESS=1ccb306f688ec96e8afd44d4bff5f7f6fcc64fdc951ce3e238bf384c29dac9bb
++NEXT_PUBLIC_PROOF_SERVER_URL=http://127.0.0.1:6300
++NEXT_PUBLIC_INDEXER_URL=https://indexer.preprod.midnight.network/api/v4/graphql
++NEXT_PUBLIC_INDEXER_WS_URL=wss://indexer.preprod.midnight.network/api/v4/graphql/ws
++NEXT_PUBLIC_NODE_URL=https://rpc.preprod.midnight.network
++NEXT_PUBLIC_RPC_URL=https://rpc.preprod.midnight.network
++
++# Legacy compatibility
++VITE_NETWORK=preprod
++VITE_CONTRACT_ADDRESS=1ccb306f688ec96e8afd44d4bff5f7f6fcc64fdc951ce3e238bf384c29dac9bb
++VITE_PROOF_SERVER_URL=http://127.0.0.1:6300
++VITE_INDEXER_URL=https://indexer.preprod.midnight.network/api/v4/graphql
++VITE_INDEXER_WS_URL=wss://indexer.preprod.midnight.network/api/v4/graphql/ws
+diff --git a/ui/.gitignore b/ui/.gitignore
+index 4108b33..b238fa0 100644
+--- a/ui/.gitignore
++++ b/ui/.gitignore
+@@ -22,3 +22,4 @@ dist-ssr
+ *.njsproj
+ *.sln
+ *.sw?
++.next
+diff --git a/ui/package-lock.json b/ui/package-lock.json
+index 14a128f..8d60a44 100644
+--- a/ui/package-lock.json
++++ b/ui/package-lock.json
+@@ -9,6 +9,7 @@
+       "version": "0.0.0",
+       "dependencies": {
+         "@midnight-ntwrk/dapp-connector-api": "1.2.1",
++        "next": "^15.3.9",
+         "react": "^19.2.8",
+         "react-dom": "^19.2.8"
+       },
+@@ -35,7 +36,6 @@
+       "version": "1.11.1",
+       "resolved": "https://registry.npmjs.org/@emnapi/runtime/-/runtime-1.11.1.tgz",
+       "integrity": "sha512-vgj7R3y3Wgx24IQaGPA/R6YFXLHVMOZ0uVEyIQPaWs+rd1AzfEMXlAC22FYwO1XkKR6NPsq7mUandH8oIRdZFw==",
+-      "dev": true,
+       "license": "MIT",
+       "optional": true,
+       "dependencies": {
+@@ -53,6 +53,472 @@
+         "tslib": "^2.4.0"
+       }
+     },
++    "node_modules/@img/colour": {
++      "version": "1.1.0",
++      "resolved": "https://registry.npmjs.org/@img/colour/-/colour-1.1.0.tgz",
++      "integrity": "sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ==",
++      "license": "MIT",
++      "optional": true,
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@img/sharp-darwin-arm64": {
++      "version": "0.34.5",
++      "resolved": "https://registry.npmjs.org/@img/sharp-darwin-arm64/-/sharp-darwin-arm64-0.34.5.tgz",
++      "integrity": "sha512-imtQ3WMJXbMY4fxb/Ndp6HBTNVtWCUI0WdobyheGf5+ad6xX8VIDO8u2xE4qc/fr08CKG/7dDseFtn6M6g/r3w==",
++      "cpu": [
++        "arm64"
++      ],
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "darwin"
++      ],
++      "engines": {
++        "node": "^18.17.0 || ^20.3.0 || >=21.0.0"
++      },
++      "funding": {
++        "url": "https://opencollective.com/libvips"
++      },
++      "optionalDependencies": {
++        "@img/sharp-libvips-darwin-arm64": "1.2.4"
++      }
++    },
++    "node_modules/@img/sharp-darwin-x64": {
++      "version": "0.34.5",
++      "resolved": "https://registry.npmjs.org/@img/sharp-darwin-x64/-/sharp-darwin-x64-0.34.5.tgz",
++      "integrity": "sha512-YNEFAF/4KQ/PeW0N+r+aVVsoIY0/qxxikF2SWdp+NRkmMB7y9LBZAVqQ4yhGCm/H3H270OSykqmQMKLBhBJDEw==",
++      "cpu": [
++        "x64"
++      ],
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "darwin"
++      ],
++      "engines": {
++        "node": "^18.17.0 || ^20.3.0 || >=21.0.0"
++      },
++      "funding": {
++        "url": "https://opencollective.com/libvips"
++      },
++      "optionalDependencies": {
++        "@img/sharp-libvips-darwin-x64": "1.2.4"
++      }
++    },
++    "node_modules/@img/sharp-libvips-darwin-arm64": {
++      "version": "1.2.4",
++      "resolved": "https://registry.npmjs.org/@img/sharp-libvips-darwin-arm64/-/sharp-libvips-darwin-arm64-1.2.4.tgz",
++      "integrity": "sha512-zqjjo7RatFfFoP0MkQ51jfuFZBnVE2pRiaydKJ1G/rHZvnsrHAOcQALIi9sA5co5xenQdTugCvtb1cuf78Vf4g==",
++      "cpu": [
++        "arm64"
++      ],
++      "license": "LGPL-3.0-or-later",
++      "optional": true,
++      "os": [
++        "darwin"
++      ],
++      "funding": {
++        "url": "https://opencollective.com/libvips"
++      }
++    },
++    "node_modules/@img/sharp-libvips-darwin-x64": {
++      "version": "1.2.4",
++      "resolved": "https://registry.npmjs.org/@img/sharp-libvips-darwin-x64/-/sharp-libvips-darwin-x64-1.2.4.tgz",
++      "integrity": "sha512-1IOd5xfVhlGwX+zXv2N93k0yMONvUlANylbJw1eTah8K/Jtpi15KC+WSiaX/nBmbm2HxRM1gZ0nSdjSsrZbGKg==",
++      "cpu": [
++        "x64"
++      ],
++      "license": "LGPL-3.0-or-later",
++      "optional": true,
++      "os": [
++        "darwin"
++      ],
++      "funding": {
++        "url": "https://opencollective.com/libvips"
++      }
++    },
++    "node_modules/@img/sharp-libvips-linux-arm": {
++      "version": "1.2.4",
++      "resolved": "https://registry.npmjs.org/@img/sharp-libvips-linux-arm/-/sharp-libvips-linux-arm-1.2.4.tgz",
++      "integrity": "sha512-bFI7xcKFELdiNCVov8e44Ia4u2byA+l3XtsAj+Q8tfCwO6BQ8iDojYdvoPMqsKDkuoOo+X6HZA0s0q11ANMQ8A==",
++      "cpu": [
++        "arm"
++      ],
++      "license": "LGPL-3.0-or-later",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "funding": {
++        "url": "https://opencollective.com/libvips"
++      }
++    },
++    "node_modules/@img/sharp-libvips-linux-arm64": {
++      "version": "1.2.4",
++      "resolved": "https://registry.npmjs.org/@img/sharp-libvips-linux-arm64/-/sharp-libvips-linux-arm64-1.2.4.tgz",
++      "integrity": "sha512-excjX8DfsIcJ10x1Kzr4RcWe1edC9PquDRRPx3YVCvQv+U5p7Yin2s32ftzikXojb1PIFc/9Mt28/y+iRklkrw==",
++      "cpu": [
++        "arm64"
++      ],
++      "license": "LGPL-3.0-or-later",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "funding": {
++        "url": "https://opencollective.com/libvips"
++      }
++    },
++    "node_modules/@img/sharp-libvips-linux-ppc64": {
++      "version": "1.2.4",
++      "resolved": "https://registry.npmjs.org/@img/sharp-libvips-linux-ppc64/-/sharp-libvips-linux-ppc64-1.2.4.tgz",
++      "integrity": "sha512-FMuvGijLDYG6lW+b/UvyilUWu5Ayu+3r2d1S8notiGCIyYU/76eig1UfMmkZ7vwgOrzKzlQbFSuQfgm7GYUPpA==",
++      "cpu": [
++        "ppc64"
++      ],
++      "license": "LGPL-3.0-or-later",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "funding": {
++        "url": "https://opencollective.com/libvips"
++      }
++    },
++    "node_modules/@img/sharp-libvips-linux-riscv64": {
++      "version": "1.2.4",
++      "resolved": "https://registry.npmjs.org/@img/sharp-libvips-linux-riscv64/-/sharp-libvips-linux-riscv64-1.2.4.tgz",
++      "integrity": "sha512-oVDbcR4zUC0ce82teubSm+x6ETixtKZBh/qbREIOcI3cULzDyb18Sr/Wcyx7NRQeQzOiHTNbZFF1UwPS2scyGA==",
++      "cpu": [
++        "riscv64"
++      ],
++      "license": "LGPL-3.0-or-later",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "funding": {
++        "url": "https://opencollective.com/libvips"
++      }
++    },
++    "node_modules/@img/sharp-libvips-linux-s390x": {
++      "version": "1.2.4",
++      "resolved": "https://registry.npmjs.org/@img/sharp-libvips-linux-s390x/-/sharp-libvips-linux-s390x-1.2.4.tgz",
++      "integrity": "sha512-qmp9VrzgPgMoGZyPvrQHqk02uyjA0/QrTO26Tqk6l4ZV0MPWIW6LTkqOIov+J1yEu7MbFQaDpwdwJKhbJvuRxQ==",
++      "cpu": [
++        "s390x"
++      ],
++      "license": "LGPL-3.0-or-later",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "funding": {
++        "url": "https://opencollective.com/libvips"
++      }
++    },
++    "node_modules/@img/sharp-libvips-linux-x64": {
++      "version": "1.2.4",
++      "resolved": "https://registry.npmjs.org/@img/sharp-libvips-linux-x64/-/sharp-libvips-linux-x64-1.2.4.tgz",
++      "integrity": "sha512-tJxiiLsmHc9Ax1bz3oaOYBURTXGIRDODBqhveVHonrHJ9/+k89qbLl0bcJns+e4t4rvaNBxaEZsFtSfAdquPrw==",
++      "cpu": [
++        "x64"
++      ],
++      "license": "LGPL-3.0-or-later",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "funding": {
++        "url": "https://opencollective.com/libvips"
++      }
++    },
++    "node_modules/@img/sharp-libvips-linuxmusl-arm64": {
++      "version": "1.2.4",
++      "resolved": "https://registry.npmjs.org/@img/sharp-libvips-linuxmusl-arm64/-/sharp-libvips-linuxmusl-arm64-1.2.4.tgz",
++      "integrity": "sha512-FVQHuwx1IIuNow9QAbYUzJ+En8KcVm9Lk5+uGUQJHaZmMECZmOlix9HnH7n1TRkXMS0pGxIJokIVB9SuqZGGXw==",
++      "cpu": [
++        "arm64"
++      ],
++      "license": "LGPL-3.0-or-later",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "funding": {
++        "url": "https://opencollective.com/libvips"
++      }
++    },
++    "node_modules/@img/sharp-libvips-linuxmusl-x64": {
++      "version": "1.2.4",
++      "resolved": "https://registry.npmjs.org/@img/sharp-libvips-linuxmusl-x64/-/sharp-libvips-linuxmusl-x64-1.2.4.tgz",
++      "integrity": "sha512-+LpyBk7L44ZIXwz/VYfglaX/okxezESc6UxDSoyo2Ks6Jxc4Y7sGjpgU9s4PMgqgjj1gZCylTieNamqA1MF7Dg==",
++      "cpu": [
++        "x64"
++      ],
++      "license": "LGPL-3.0-or-later",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "funding": {
++        "url": "https://opencollective.com/libvips"
++      }
++    },
++    "node_modules/@img/sharp-linux-arm": {
++      "version": "0.34.5",
++      "resolved": "https://registry.npmjs.org/@img/sharp-linux-arm/-/sharp-linux-arm-0.34.5.tgz",
++      "integrity": "sha512-9dLqsvwtg1uuXBGZKsxem9595+ujv0sJ6Vi8wcTANSFpwV/GONat5eCkzQo/1O6zRIkh0m/8+5BjrRr7jDUSZw==",
++      "cpu": [
++        "arm"
++      ],
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": "^18.17.0 || ^20.3.0 || >=21.0.0"
++      },
++      "funding": {
++        "url": "https://opencollective.com/libvips"
++      },
++      "optionalDependencies": {
++        "@img/sharp-libvips-linux-arm": "1.2.4"
++      }
++    },
++    "node_modules/@img/sharp-linux-arm64": {
++      "version": "0.34.5",
++      "resolved": "https://registry.npmjs.org/@img/sharp-linux-arm64/-/sharp-linux-arm64-0.34.5.tgz",
++      "integrity": "sha512-bKQzaJRY/bkPOXyKx5EVup7qkaojECG6NLYswgktOZjaXecSAeCWiZwwiFf3/Y+O1HrauiE3FVsGxFg8c24rZg==",
++      "cpu": [
++        "arm64"
++      ],
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": "^18.17.0 || ^20.3.0 || >=21.0.0"
++      },
++      "funding": {
++        "url": "https://opencollective.com/libvips"
++      },
++      "optionalDependencies": {
++        "@img/sharp-libvips-linux-arm64": "1.2.4"
++      }
++    },
++    "node_modules/@img/sharp-linux-ppc64": {
++      "version": "0.34.5",
++      "resolved": "https://registry.npmjs.org/@img/sharp-linux-ppc64/-/sharp-linux-ppc64-0.34.5.tgz",
++      "integrity": "sha512-7zznwNaqW6YtsfrGGDA6BRkISKAAE1Jo0QdpNYXNMHu2+0dTrPflTLNkpc8l7MUP5M16ZJcUvysVWWrMefZquA==",
++      "cpu": [
++        "ppc64"
++      ],
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": "^18.17.0 || ^20.3.0 || >=21.0.0"
++      },
++      "funding": {
++        "url": "https://opencollective.com/libvips"
++      },
++      "optionalDependencies": {
++        "@img/sharp-libvips-linux-ppc64": "1.2.4"
++      }
++    },
++    "node_modules/@img/sharp-linux-riscv64": {
++      "version": "0.34.5",
++      "resolved": "https://registry.npmjs.org/@img/sharp-linux-riscv64/-/sharp-linux-riscv64-0.34.5.tgz",
++      "integrity": "sha512-51gJuLPTKa7piYPaVs8GmByo7/U7/7TZOq+cnXJIHZKavIRHAP77e3N2HEl3dgiqdD/w0yUfiJnII77PuDDFdw==",
++      "cpu": [
++        "riscv64"
++      ],
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": "^18.17.0 || ^20.3.0 || >=21.0.0"
++      },
++      "funding": {
++        "url": "https://opencollective.com/libvips"
++      },
++      "optionalDependencies": {
++        "@img/sharp-libvips-linux-riscv64": "1.2.4"
++      }
++    },
++    "node_modules/@img/sharp-linux-s390x": {
++      "version": "0.34.5",
++      "resolved": "https://registry.npmjs.org/@img/sharp-linux-s390x/-/sharp-linux-s390x-0.34.5.tgz",
++      "integrity": "sha512-nQtCk0PdKfho3eC5MrbQoigJ2gd1CgddUMkabUj+rBevs8tZ2cULOx46E7oyX+04WGfABgIwmMC0VqieTiR4jg==",
++      "cpu": [
++        "s390x"
++      ],
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": "^18.17.0 || ^20.3.0 || >=21.0.0"
++      },
++      "funding": {
++        "url": "https://opencollective.com/libvips"
++      },
++      "optionalDependencies": {
++        "@img/sharp-libvips-linux-s390x": "1.2.4"
++      }
++    },
++    "node_modules/@img/sharp-linux-x64": {
++      "version": "0.34.5",
++      "resolved": "https://registry.npmjs.org/@img/sharp-linux-x64/-/sharp-linux-x64-0.34.5.tgz",
++      "integrity": "sha512-MEzd8HPKxVxVenwAa+JRPwEC7QFjoPWuS5NZnBt6B3pu7EG2Ge0id1oLHZpPJdn3OQK+BQDiw9zStiHBTJQQQQ==",
++      "cpu": [
++        "x64"
++      ],
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": "^18.17.0 || ^20.3.0 || >=21.0.0"
++      },
++      "funding": {
++        "url": "https://opencollective.com/libvips"
++      },
++      "optionalDependencies": {
++        "@img/sharp-libvips-linux-x64": "1.2.4"
++      }
++    },
++    "node_modules/@img/sharp-linuxmusl-arm64": {
++      "version": "0.34.5",
++      "resolved": "https://registry.npmjs.org/@img/sharp-linuxmusl-arm64/-/sharp-linuxmusl-arm64-0.34.5.tgz",
++      "integrity": "sha512-fprJR6GtRsMt6Kyfq44IsChVZeGN97gTD331weR1ex1c1rypDEABN6Tm2xa1wE6lYb5DdEnk03NZPqA7Id21yg==",
++      "cpu": [
++        "arm64"
++      ],
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": "^18.17.0 || ^20.3.0 || >=21.0.0"
++      },
++      "funding": {
++        "url": "https://opencollective.com/libvips"
++      },
++      "optionalDependencies": {
++        "@img/sharp-libvips-linuxmusl-arm64": "1.2.4"
++      }
++    },
++    "node_modules/@img/sharp-linuxmusl-x64": {
++      "version": "0.34.5",
++      "resolved": "https://registry.npmjs.org/@img/sharp-linuxmusl-x64/-/sharp-linuxmusl-x64-0.34.5.tgz",
++      "integrity": "sha512-Jg8wNT1MUzIvhBFxViqrEhWDGzqymo3sV7z7ZsaWbZNDLXRJZoRGrjulp60YYtV4wfY8VIKcWidjojlLcWrd8Q==",
++      "cpu": [
++        "x64"
++      ],
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": "^18.17.0 || ^20.3.0 || >=21.0.0"
++      },
++      "funding": {
++        "url": "https://opencollective.com/libvips"
++      },
++      "optionalDependencies": {
++        "@img/sharp-libvips-linuxmusl-x64": "1.2.4"
++      }
++    },
++    "node_modules/@img/sharp-wasm32": {
++      "version": "0.34.5",
++      "resolved": "https://registry.npmjs.org/@img/sharp-wasm32/-/sharp-wasm32-0.34.5.tgz",
++      "integrity": "sha512-OdWTEiVkY2PHwqkbBI8frFxQQFekHaSSkUIJkwzclWZe64O1X4UlUjqqqLaPbUpMOQk6FBu/HtlGXNblIs0huw==",
++      "cpu": [
++        "wasm32"
++      ],
++      "license": "Apache-2.0 AND LGPL-3.0-or-later AND MIT",
++      "optional": true,
++      "dependencies": {
++        "@emnapi/runtime": "^1.7.0"
++      },
++      "engines": {
++        "node": "^18.17.0 || ^20.3.0 || >=21.0.0"
++      },
++      "funding": {
++        "url": "https://opencollective.com/libvips"
++      }
++    },
++    "node_modules/@img/sharp-win32-arm64": {
++      "version": "0.34.5",
++      "resolved": "https://registry.npmjs.org/@img/sharp-win32-arm64/-/sharp-win32-arm64-0.34.5.tgz",
++      "integrity": "sha512-WQ3AgWCWYSb2yt+IG8mnC6Jdk9Whs7O0gxphblsLvdhSpSTtmu69ZG1Gkb6NuvxsNACwiPV6cNSZNzt0KPsw7g==",
++      "cpu": [
++        "arm64"
++      ],
++      "license": "Apache-2.0 AND LGPL-3.0-or-later",
++      "optional": true,
++      "os": [
++        "win32"
++      ],
++      "engines": {
++        "node": "^18.17.0 || ^20.3.0 || >=21.0.0"
++      },
++      "funding": {
++        "url": "https://opencollective.com/libvips"
++      }
++    },
++    "node_modules/@img/sharp-win32-ia32": {
++      "version": "0.34.5",
++      "resolved": "https://registry.npmjs.org/@img/sharp-win32-ia32/-/sharp-win32-ia32-0.34.5.tgz",
++      "integrity": "sha512-FV9m/7NmeCmSHDD5j4+4pNI8Cp3aW+JvLoXcTUo0IqyjSfAZJ8dIUmijx1qaJsIiU+Hosw6xM5KijAWRJCSgNg==",
++      "cpu": [
++        "ia32"
++      ],
++      "license": "Apache-2.0 AND LGPL-3.0-or-later",
++      "optional": true,
++      "os": [
++        "win32"
++      ],
++      "engines": {
++        "node": "^18.17.0 || ^20.3.0 || >=21.0.0"
++      },
++      "funding": {
++        "url": "https://opencollective.com/libvips"
++      }
++    },
++    "node_modules/@img/sharp-win32-x64": {
++      "version": "0.34.5",
++      "resolved": "https://registry.npmjs.org/@img/sharp-win32-x64/-/sharp-win32-x64-0.34.5.tgz",
++      "integrity": "sha512-+29YMsqY2/9eFEiW93eqWnuLcWcufowXewwSNIT6UwZdUUCrM3oFjMWH/Z6/TMmb4hlFenmfAVbpWeup2jryCw==",
++      "cpu": [
++        "x64"
++      ],
++      "license": "Apache-2.0 AND LGPL-3.0-or-later",
++      "optional": true,
++      "os": [
++        "win32"
++      ],
++      "engines": {
++        "node": "^18.17.0 || ^20.3.0 || >=21.0.0"
++      },
++      "funding": {
++        "url": "https://opencollective.com/libvips"
++      }
++    },
+     "node_modules/@midnight-ntwrk/dapp-connector-api": {
+       "version": "1.2.1",
+       "resolved": "https://registry.npmjs.org/@midnight-ntwrk/dapp-connector-api/-/dapp-connector-api-1.2.1.tgz",
+@@ -100,6 +566,140 @@
+         "@emnapi/runtime": "^1.7.1"
+       }
+     },
++    "node_modules/@next/env": {
++      "version": "15.3.9",
++      "resolved": "https://registry.npmjs.org/@next/env/-/env-15.3.9.tgz",
++      "integrity": "sha512-I7wMCjlHc85EvAebNYJCRBZ+shdrGhcIXBviWmDzGYXwTQ+WrYpfg1LBOnTK1Bn3b+ud5apesNObXKEGqi/C3g==",
++      "license": "MIT"
++    },
++    "node_modules/@next/swc-darwin-arm64": {
++      "version": "15.3.5",
++      "resolved": "https://registry.npmjs.org/@next/swc-darwin-arm64/-/swc-darwin-arm64-15.3.5.tgz",
++      "integrity": "sha512-lM/8tilIsqBq+2nq9kbTW19vfwFve0NR7MxfkuSUbRSgXlMQoJYg+31+++XwKVSXk4uT23G2eF/7BRIKdn8t8w==",
++      "cpu": [
++        "arm64"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "darwin"
++      ],
++      "engines": {
++        "node": ">= 10"
++      }
++    },
++    "node_modules/@next/swc-darwin-x64": {
++      "version": "15.3.5",
++      "resolved": "https://registry.npmjs.org/@next/swc-darwin-x64/-/swc-darwin-x64-15.3.5.tgz",
++      "integrity": "sha512-WhwegPQJ5IfoUNZUVsI9TRAlKpjGVK0tpJTL6KeiC4cux9774NYE9Wu/iCfIkL/5J8rPAkqZpG7n+EfiAfidXA==",
++      "cpu": [
++        "x64"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "darwin"
++      ],
++      "engines": {
++        "node": ">= 10"
++      }
++    },
++    "node_modules/@next/swc-linux-arm64-gnu": {
++      "version": "15.3.5",
++      "resolved": "https://registry.npmjs.org/@next/swc-linux-arm64-gnu/-/swc-linux-arm64-gnu-15.3.5.tgz",
++      "integrity": "sha512-LVD6uMOZ7XePg3KWYdGuzuvVboxujGjbcuP2jsPAN3MnLdLoZUXKRc6ixxfs03RH7qBdEHCZjyLP/jBdCJVRJQ==",
++      "cpu": [
++        "arm64"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">= 10"
++      }
++    },
++    "node_modules/@next/swc-linux-arm64-musl": {
++      "version": "15.3.5",
++      "resolved": "https://registry.npmjs.org/@next/swc-linux-arm64-musl/-/swc-linux-arm64-musl-15.3.5.tgz",
++      "integrity": "sha512-k8aVScYZ++BnS2P69ClK7v4nOu702jcF9AIHKu6llhHEtBSmM2zkPGl9yoqbSU/657IIIb0QHpdxEr0iW9z53A==",
++      "cpu": [
++        "arm64"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">= 10"
++      }
++    },
++    "node_modules/@next/swc-linux-x64-gnu": {
++      "version": "15.3.5",
++      "resolved": "https://registry.npmjs.org/@next/swc-linux-x64-gnu/-/swc-linux-x64-gnu-15.3.5.tgz",
++      "integrity": "sha512-2xYU0DI9DGN/bAHzVwADid22ba5d/xrbrQlr2U+/Q5WkFUzeL0TDR963BdrtLS/4bMmKZGptLeg6282H/S2i8A==",
++      "cpu": [
++        "x64"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">= 10"
++      }
++    },
++    "node_modules/@next/swc-linux-x64-musl": {
++      "version": "15.3.5",
++      "resolved": "https://registry.npmjs.org/@next/swc-linux-x64-musl/-/swc-linux-x64-musl-15.3.5.tgz",
++      "integrity": "sha512-TRYIqAGf1KCbuAB0gjhdn5Ytd8fV+wJSM2Nh2is/xEqR8PZHxfQuaiNhoF50XfY90sNpaRMaGhF6E+qjV1b9Tg==",
++      "cpu": [
++        "x64"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">= 10"
++      }
++    },
++    "node_modules/@next/swc-win32-arm64-msvc": {
++      "version": "15.3.5",
++      "resolved": "https://registry.npmjs.org/@next/swc-win32-arm64-msvc/-/swc-win32-arm64-msvc-15.3.5.tgz",
++      "integrity": "sha512-h04/7iMEUSMY6fDGCvdanKqlO1qYvzNxntZlCzfE8i5P0uqzVQWQquU1TIhlz0VqGQGXLrFDuTJVONpqGqjGKQ==",
++      "cpu": [
++        "arm64"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "win32"
++      ],
++      "engines": {
++        "node": ">= 10"
++      }
++    },
++    "node_modules/@next/swc-win32-x64-msvc": {
++      "version": "15.3.5",
++      "resolved": "https://registry.npmjs.org/@next/swc-win32-x64-msvc/-/swc-win32-x64-msvc-15.3.5.tgz",
++      "integrity": "sha512-5fhH6fccXxnX2KhllnGhkYMndhOiLOLEiVGYjP2nizqeGWkN10sA9taATlXwake2E2XMvYZjjz0Uj7T0y+z1yw==",
++      "cpu": [
++        "x64"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "win32"
++      ],
++      "engines": {
++        "node": ">= 10"
++      }
++    },
+     "node_modules/@oxc-project/types": {
+       "version": "0.139.0",
+       "resolved": "https://registry.npmjs.org/@oxc-project/types/-/types-0.139.0.tgz",
+@@ -374,6 +974,21 @@
+       "dev": true,
+       "license": "MIT"
+     },
++    "node_modules/@swc/counter": {
++      "version": "0.1.3",
++      "resolved": "https://registry.npmjs.org/@swc/counter/-/counter-0.1.3.tgz",
++      "integrity": "sha512-e2BR4lsJkkRlKZ/qCHPw9ZaSxc0MVUd7gtbtaB7aMvHeJVYe8sOB8DBZkP2DtISHGSku9sCK6T6cnY0CtXrOCQ==",
++      "license": "Apache-2.0"
++    },
++    "node_modules/@swc/helpers": {
++      "version": "0.5.15",
++      "resolved": "https://registry.npmjs.org/@swc/helpers/-/helpers-0.5.15.tgz",
++      "integrity": "sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g==",
++      "license": "Apache-2.0",
++      "dependencies": {
++        "tslib": "^2.8.0"
++      }
++    },
+     "node_modules/@tybys/wasm-util": {
+       "version": "0.10.3",
+       "resolved": "https://registry.npmjs.org/@tybys/wasm-util/-/wasm-util-0.10.3.tgz",
+@@ -405,6 +1020,43 @@
+         "@types/react": "^19.2.0"
+       }
+     },
++    "node_modules/busboy": {
++      "version": "1.6.0",
++      "resolved": "https://registry.npmjs.org/busboy/-/busboy-1.6.0.tgz",
++      "integrity": "sha512-8SFQbg/0hQ9xy3UNTB0YEnsNBbWfhf7RtnzpL7TkBiTBRfrQ9Fxcnz7VJsleJpyp6rVLvXiuORqjlHi5q+PYuA==",
++      "dependencies": {
++        "streamsearch": "^1.1.0"
++      },
++      "engines": {
++        "node": ">=10.16.0"
++      }
++    },
++    "node_modules/caniuse-lite": {
++      "version": "1.0.30001810",
++      "resolved": "https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30001810.tgz",
++      "integrity": "sha512-TITQPUkaz+aVk5GL6NhOdwk1aEaNTSDPsGFWrTuhKGtjTF70jL/Oht2W4c6rXUe5fu7Ie19VIahAXHIIiWWNeg==",
++      "funding": [
++        {
++          "type": "opencollective",
++          "url": "https://opencollective.com/browserslist"
++        },
++        {
++          "type": "tidelift",
++          "url": "https://tidelift.com/funding/github/npm/caniuse-lite"
++        },
++        {
++          "type": "github",
++          "url": "https://github.com/sponsors/ai"
++        }
++      ],
++      "license": "CC-BY-4.0"
++    },
++    "node_modules/client-only": {
++      "version": "0.0.1",
++      "resolved": "https://registry.npmjs.org/client-only/-/client-only-0.0.1.tgz",
++      "integrity": "sha512-IV3Ou0jSMzZrd3pZ48nLkT9DA7Ag1pnPzaiQhpW7c3RbcqqzvzzVu+L8gfqMp/8IM2MQtSiqaCxrrcfu8I8rMA==",
++      "license": "MIT"
++    },
+     "node_modules/csstype": {
+       "version": "3.2.3",
+       "resolved": "https://registry.npmjs.org/csstype/-/csstype-3.2.3.tgz",
+@@ -416,7 +1068,7 @@
+       "version": "2.1.2",
+       "resolved": "https://registry.npmjs.org/detect-libc/-/detect-libc-2.1.2.tgz",
+       "integrity": "sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==",
+-      "dev": true,
++      "devOptional": true,
+       "license": "Apache-2.0",
+       "engines": {
+         "node": ">=8"
+@@ -720,7 +1372,6 @@
+       "version": "3.3.16",
+       "resolved": "https://registry.npmjs.org/nanoid/-/nanoid-3.3.16.tgz",
+       "integrity": "sha512-bzlKTyNJ7+LdGIIwy8ijFpIqEQIvafahV7eYykJ8Cvh42EdJeODoJ6gUJXpQJvej1BddH8OqTXZNE/KfbWAu8Q==",
+-      "dev": true,
+       "funding": [
+         {
+           "type": "github",
+@@ -735,11 +1386,92 @@
+         "node": "^10 || ^12 || ^13.7 || ^14 || >=15.0.1"
+       }
+     },
++    "node_modules/next": {
++      "version": "15.3.9",
++      "resolved": "https://registry.npmjs.org/next/-/next-15.3.9.tgz",
++      "integrity": "sha512-bat50ogkh2esjfkbqmVocL5QunR9RGCSO2oQKFjKeDcEylIgw3JY6CMfGnzoVfXJ9SDLHI546sHmsk90D2ivwQ==",
++      "license": "MIT",
++      "dependencies": {
++        "@next/env": "15.3.9",
++        "@swc/counter": "0.1.3",
++        "@swc/helpers": "0.5.15",
++        "busboy": "1.6.0",
++        "caniuse-lite": "^1.0.30001579",
++        "postcss": "8.4.31",
++        "styled-jsx": "5.1.6"
++      },
++      "bin": {
++        "next": "dist/bin/next"
++      },
++      "engines": {
++        "node": "^18.18.0 || ^19.8.0 || >= 20.0.0"
++      },
++      "optionalDependencies": {
++        "@next/swc-darwin-arm64": "15.3.5",
++        "@next/swc-darwin-x64": "15.3.5",
++        "@next/swc-linux-arm64-gnu": "15.3.5",
++        "@next/swc-linux-arm64-musl": "15.3.5",
++        "@next/swc-linux-x64-gnu": "15.3.5",
++        "@next/swc-linux-x64-musl": "15.3.5",
++        "@next/swc-win32-arm64-msvc": "15.3.5",
++        "@next/swc-win32-x64-msvc": "15.3.5",
++        "sharp": "^0.34.1"
++      },
++      "peerDependencies": {
++        "@opentelemetry/api": "^1.1.0",
++        "@playwright/test": "^1.41.2",
++        "babel-plugin-react-compiler": "*",
++        "react": "^18.2.0 || 19.0.0-rc-de68d2f4-20241204 || ^19.0.0",
++        "react-dom": "^18.2.0 || 19.0.0-rc-de68d2f4-20241204 || ^19.0.0",
++        "sass": "^1.3.0"
++      },
++      "peerDependenciesMeta": {
++        "@opentelemetry/api": {
++          "optional": true
++        },
++        "@playwright/test": {
++          "optional": true
++        },
++        "babel-plugin-react-compiler": {
++          "optional": true
++        },
++        "sass": {
++          "optional": true
++        }
++      }
++    },
++    "node_modules/next/node_modules/postcss": {
++      "version": "8.4.31",
++      "resolved": "https://registry.npmjs.org/postcss/-/postcss-8.4.31.tgz",
++      "integrity": "sha512-PS08Iboia9mts/2ygV3eLpY5ghnUcfLV/EXTOW1E2qYxJKGGBUtNjN76FYHnMs36RmARn41bC0AZmn+rR0OVpQ==",
++      "funding": [
++        {
++          "type": "opencollective",
++          "url": "https://opencollective.com/postcss/"
++        },
++        {
++          "type": "tidelift",
++          "url": "https://tidelift.com/funding/github/npm/postcss"
++        },
++        {
++          "type": "github",
++          "url": "https://github.com/sponsors/ai"
++        }
++      ],
++      "license": "MIT",
++      "dependencies": {
++        "nanoid": "^3.3.6",
++        "picocolors": "^1.0.0",
++        "source-map-js": "^1.0.2"
++      },
++      "engines": {
++        "node": "^10 || ^12 || >=14"
++      }
++    },
+     "node_modules/picocolors": {
+       "version": "1.1.1",
+       "resolved": "https://registry.npmjs.org/picocolors/-/picocolors-1.1.1.tgz",
+       "integrity": "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==",
+-      "dev": true,
+       "license": "ISC"
+     },
+     "node_modules/picomatch": {
+@@ -855,16 +1587,104 @@
+       "integrity": "sha512-eNv+WrVbKu1f3vbYJT/xtiF5syA5HPIMtf9IgY/nKg0sWqzAUEvqY/xm7OcZc/qafLx/iO9FgOmeSAp4v5ti/Q==",
+       "license": "MIT"
+     },
++    "node_modules/semver": {
++      "version": "7.8.5",
++      "resolved": "https://registry.npmjs.org/semver/-/semver-7.8.5.tgz",
++      "integrity": "sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==",
++      "license": "ISC",
++      "optional": true,
++      "bin": {
++        "semver": "bin/semver.js"
++      },
++      "engines": {
++        "node": ">=10"
++      }
++    },
++    "node_modules/sharp": {
++      "version": "0.34.5",
++      "resolved": "https://registry.npmjs.org/sharp/-/sharp-0.34.5.tgz",
++      "integrity": "sha512-Ou9I5Ft9WNcCbXrU9cMgPBcCK8LiwLqcbywW3t4oDV37n1pzpuNLsYiAV8eODnjbtQlSDwZ2cUEeQz4E54Hltg==",
++      "hasInstallScript": true,
++      "license": "Apache-2.0",
++      "optional": true,
++      "dependencies": {
++        "@img/colour": "^1.0.0",
++        "detect-libc": "^2.1.2",
++        "semver": "^7.7.3"
++      },
++      "engines": {
++        "node": "^18.17.0 || ^20.3.0 || >=21.0.0"
++      },
++      "funding": {
++        "url": "https://opencollective.com/libvips"
++      },
++      "optionalDependencies": {
++        "@img/sharp-darwin-arm64": "0.34.5",
++        "@img/sharp-darwin-x64": "0.34.5",
++        "@img/sharp-libvips-darwin-arm64": "1.2.4",
++        "@img/sharp-libvips-darwin-x64": "1.2.4",
++        "@img/sharp-libvips-linux-arm": "1.2.4",
++        "@img/sharp-libvips-linux-arm64": "1.2.4",
++        "@img/sharp-libvips-linux-ppc64": "1.2.4",
++        "@img/sharp-libvips-linux-riscv64": "1.2.4",
++        "@img/sharp-libvips-linux-s390x": "1.2.4",
++        "@img/sharp-libvips-linux-x64": "1.2.4",
++        "@img/sharp-libvips-linuxmusl-arm64": "1.2.4",
++        "@img/sharp-libvips-linuxmusl-x64": "1.2.4",
++        "@img/sharp-linux-arm": "0.34.5",
++        "@img/sharp-linux-arm64": "0.34.5",
++        "@img/sharp-linux-ppc64": "0.34.5",
++        "@img/sharp-linux-riscv64": "0.34.5",
++        "@img/sharp-linux-s390x": "0.34.5",
++        "@img/sharp-linux-x64": "0.34.5",
++        "@img/sharp-linuxmusl-arm64": "0.34.5",
++        "@img/sharp-linuxmusl-x64": "0.34.5",
++        "@img/sharp-wasm32": "0.34.5",
++        "@img/sharp-win32-arm64": "0.34.5",
++        "@img/sharp-win32-ia32": "0.34.5",
++        "@img/sharp-win32-x64": "0.34.5"
++      }
++    },
+     "node_modules/source-map-js": {
+       "version": "1.2.1",
+       "resolved": "https://registry.npmjs.org/source-map-js/-/source-map-js-1.2.1.tgz",
+       "integrity": "sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==",
+-      "dev": true,
+       "license": "BSD-3-Clause",
+       "engines": {
+         "node": ">=0.10.0"
+       }
+     },
++    "node_modules/streamsearch": {
++      "version": "1.1.0",
++      "resolved": "https://registry.npmjs.org/streamsearch/-/streamsearch-1.1.0.tgz",
++      "integrity": "sha512-Mcc5wHehp9aXz1ax6bZUyY5afg9u2rv5cqQI3mRrYkGC8rW2hM02jWuwjtL++LS5qinSyhj2QfLyNsuc+VsExg==",
++      "engines": {
++        "node": ">=10.0.0"
++      }
++    },
++    "node_modules/styled-jsx": {
++      "version": "5.1.6",
++      "resolved": "https://registry.npmjs.org/styled-jsx/-/styled-jsx-5.1.6.tgz",
++      "integrity": "sha512-qSVyDTeMotdvQYoHWLNGwRFJHC+i+ZvdBRYosOFgC+Wg1vx4frN2/RG/NA7SYqqvKNLf39P2LSRA2pu6n0XYZA==",
++      "license": "MIT",
++      "dependencies": {
++        "client-only": "0.0.1"
++      },
++      "engines": {
++        "node": ">= 12.0.0"
++      },
++      "peerDependencies": {
++        "react": ">= 16.8.0 || 17.x.x || ^18.0.0-0 || ^19.0.0-0"
++      },
++      "peerDependenciesMeta": {
++        "@babel/core": {
++          "optional": true
++        },
++        "babel-plugin-macros": {
++          "optional": true
++        }
++      }
++    },
+     "node_modules/tinyglobby": {
+       "version": "0.2.17",
+       "resolved": "https://registry.npmjs.org/tinyglobby/-/tinyglobby-0.2.17.tgz",
+diff --git a/ui/package.json b/ui/package.json
+index 5e65d0a..463a5a9 100644
+--- a/ui/package.json
++++ b/ui/package.json
+@@ -1,21 +1,24 @@
+ {
+-  "name": "ui",
++  "name": "medproof-ui",
+   "private": true,
+-  "version": "0.0.0",
++  "version": "1.0.0",
+   "type": "module",
+   "scripts": {
+-    "dev": "vite",
+-    "build": "tsc && vite build",
+-    "preview": "vite preview"
++    "dev": "next dev",
++    "build": "next build",
++    "start": "next start",
++    "lint": "next lint"
+   },
+   "devDependencies": {
++    "@types/node": "^22.0.0",
+     "@types/react": "^19.2.17",
+     "@types/react-dom": "^19.2.3",
+-    "typescript": "~6.0.2",
+-    "vite": "^8.1.1"
++    "typescript": "^5.7.0"
+   },
+   "dependencies": {
++    "@midnight-ntwrk/compact-runtime": "0.16.0",
+     "@midnight-ntwrk/dapp-connector-api": "1.2.1",
++    "next": "^15.3.9",
+     "react": "^19.2.8",
+     "react-dom": "^19.2.8"
+   }
+diff --git a/ui/src/App.tsx b/ui/src/App.tsx
+deleted file mode 100644
+index b65a871..0000000
+--- a/ui/src/App.tsx
++++ /dev/null
+@@ -1,334 +0,0 @@
+-import React, { useState, useCallback } from 'react';
+-import { Header } from './components/Header';
+-import { WalletConnect } from './components/WalletConnect';
+-import { PrescriptionVerifier } from './components/PrescriptionVerifier';
+-import { LedgerState } from './components/LedgerState';
+-import { PrivacyModel } from './components/PrivacyModel';
+-import { ToastContainer } from './components/Toast';
+-import { AnalyticsDashboard } from './components/AnalyticsDashboard';
+-import { DoctorPortal } from './components/DoctorPortal';
+-import { PatientDashboard } from './components/PatientDashboard';
+-import { PharmacyPortal } from './components/PharmacyPortal';
+-import { VerificationHistory } from './components/VerificationHistory';
+-import { QRCodeModal } from './components/QRCodeModal';
+-import { requestLaceConnection } from './wallet-service';
+-
+-import type { WalletState, Toast, TabType } from './types';
+-import type { Prescription, VerificationLog } from '../../src/healthcare-services';
+-import { AUTHORIZED_DOCTORS, AUTHORIZED_HOSPITALS } from '../../src/healthcare-services';
+-
+-function App() {
+-  const [wallet, setWallet] = useState<WalletState | null>(() => {
+-    try {
+-      const saved = sessionStorage.getItem('rxverify_wallet');
+-      return saved ? JSON.parse(saved) : null;
+-    } catch {
+-      return null;
+-    }
+-  });
+-
+-  const handleSetWallet = useCallback((w: WalletState | null) => {
+-    setWallet(w);
+-    if (w) {
+-      sessionStorage.setItem('rxverify_wallet', JSON.stringify(w));
+-    } else {
+-      sessionStorage.removeItem('rxverify_wallet');
+-    }
+-  }, []);
+-
+-  const [toasts, setToasts] = useState<Toast[]>([]);
+-  const [verificationCount, setVerificationCount] = useState<bigint | null>(null);
+-  const [contractActive, setContractActive] = useState<boolean | null>(null);
+-  const [activeTab, setActiveTab] = useState<TabType>('analytics');
+-
+-  // Modal QR State
+-  const [qrModal, setQrModal] = useState<{ isOpen: boolean; data: string; title: string }>({
+-    isOpen: false,
+-    data: '',
+-    title: '',
+-  });
+-
+-  // Seed sample initial prescriptions
+-  const [prescriptions, setPrescriptions] = useState<Prescription[]>([
+-    {
+-      id: 'rx-101',
+-      patientId: 101,
+-      patientName: 'Alex Rivera',
+-      medicationName: 'Amoxicillin 500mg',
+-      dosage: '1 capsule every 8 hours (10 days)',
+-      instructions: 'Take after meals with water',
+-      doctorId: 'doc-101',
+-      doctorName: AUTHORIZED_DOCTORS[0].name,
+-      doctorLicense: AUTHORIZED_DOCTORS[0].licenseNumber,
+-      hospitalId: AUTHORIZED_HOSPITALS[0].id,
+-      hospitalName: AUTHORIZED_HOSPITALS[0].name,
+-      issueDate: new Date().toISOString().split('T')[0],
+-      expiryDate: new Date(Date.now() + 25 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+-      prescriptionHash: '8f1a9c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b',
+-      doctorSignature: '11223344556677889900112233445566778899001122334455667788990011223344556677889900112233445566778899001122334455667788990011223344',
+-      status: 'Valid',
+-      createdAt: Date.now() - 86400000,
+-    },
+-    {
+-      id: 'rx-102',
+-      patientId: 102,
+-      patientName: 'Samantha Chen',
+-      medicationName: 'Lisopril 10mg',
+-      dosage: '1 tablet daily in the morning',
+-      instructions: 'Monitor blood pressure weekly',
+-      doctorId: 'doc-102',
+-      doctorName: AUTHORIZED_DOCTORS[1].name,
+-      doctorLicense: AUTHORIZED_DOCTORS[1].licenseNumber,
+-      hospitalId: AUTHORIZED_HOSPITALS[1].id,
+-      hospitalName: AUTHORIZED_HOSPITALS[1].name,
+-      issueDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+-      expiryDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+-      prescriptionHash: '1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b',
+-      doctorSignature: '22334455667788990011223344556677889900112233445566778899001122334455667788990011223344556677889900112233445566778899001122334455',
+-      status: 'Valid',
+-      createdAt: Date.now() - 86400000 * 15,
+-    },
+-  ]);
+-
+-  // Initial audit log
+-  const [logs, setLogs] = useState<VerificationLog[]>([
+-    {
+-      id: 'log-001',
+-      timestamp: Date.now() - 3600000,
+-      type: 'Issued',
+-      prescriptionId: 'rx-101',
+-      verifierRole: 'Doctor',
+-      details: 'Confidential prescription digitally signed by Dr. Sarah Jenkins, MD',
+-      zkStatus: 'Proof Valid',
+-    },
+-  ]);
+-
+-  const addToast = useCallback((message: string, type: 'success' | 'error' | 'info') => {
+-    const id = Date.now().toString();
+-    setToasts(prev => [...prev, { id, message, type }]);
+-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 5000);
+-  }, []);
+-
+-  const onVerified = useCallback((rxId?: string) => {
+-    setVerificationCount(prev => prev !== null ? prev + 1n : 1n);
+-    const targetId = rxId || 'rx-101';
+-    setLogs(prev => [
+-      {
+-        id: `log-${Date.now()}`,
+-        timestamp: Date.now(),
+-        type: 'Verified',
+-        prescriptionId: targetId,
+-        verifierRole: 'Pharmacy',
+-        details: 'Zero-Knowledge Proof verified on Midnight Network circuit',
+-        zkStatus: 'Proof Valid',
+-      },
+-      ...prev,
+-    ]);
+-    addToast('Prescription verified on-chain! ZK proof submitted.', 'success');
+-  }, [addToast]);
+-
+-  const handleIssuePrescription = (newRx: Prescription) => {
+-    setPrescriptions(prev => [newRx, ...prev]);
+-    setLogs(prev => [
+-      {
+-        id: `log-${Date.now()}`,
+-        timestamp: Date.now(),
+-        type: 'Issued',
+-        prescriptionId: newRx.id,
+-        verifierRole: 'Doctor',
+-        details: `Prescription issued & signed by ${newRx.doctorName}`,
+-        zkStatus: 'Proof Valid',
+-      },
+-      ...prev,
+-    ]);
+-  };
+-
+-  const handleRevokePrescription = (rxId: string, reason: string) => {
+-    setPrescriptions(prev => prev.map(p => p.id === rxId ? { ...p, status: 'Revoked' as const } : p));
+-    setLogs(prev => [
+-      {
+-        id: `log-${Date.now()}`,
+-        timestamp: Date.now(),
+-        type: 'Revoked',
+-        prescriptionId: rxId,
+-        verifierRole: 'Doctor',
+-        details: `Revoked by doctor. Reason: ${reason}`,
+-        zkStatus: 'Revoked',
+-      },
+-      ...prev,
+-    ]);
+-  };
+-
+-  const handleVerifyPrescriptionOnChain = async (rx: Prescription) => {
+-    // Simulate ZK proof execution
+-    await new Promise(resolve => setTimeout(resolve, 1500));
+-    onVerified(rx.id);
+-  };
+-
+-  const handleHeaderConnect = useCallback(async () => {
+-    try {
+-      const connectedWallet = await requestLaceConnection();
+-      handleSetWallet(connectedWallet);
+-      addToast('Midnight Lace Wallet connected!', 'success');
+-    } catch (err) {
+-      const msg = err instanceof Error ? err.message : 'Failed to connect Lace wallet';
+-      addToast(msg, 'error');
+-      setActiveTab('privacy');
+-    }
+-  }, [handleSetWallet, addToast]);
+-
+-  const network = import.meta.env.VITE_NETWORK || 'preview';
+-  const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS || '54b40b55db6c344ddb1511d13c93e2bbbb280b4c1738b912cd838f5ac94df8dc';
+-
+-  return (
+-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+-      <Header
+-        network={network}
+-        wallet={wallet}
+-        activeTab={activeTab}
+-        onSelectTab={setActiveTab}
+-        onConnectWallet={handleHeaderConnect}
+-        onDisconnect={() => handleSetWallet(null)}
+-      />
+-
+-      <main className="main-content">
+-        <section className="hero">
+-          <div className="container">
+-            <div className="hero-eyebrow">
+-              <span>🔒</span>
+-              Production-Grade Zero-Knowledge Healthcare Platform
+-            </div>
+-            <h1>
+-              <span className="gradient-text">Confidential</span>
+-              {' '}Prescription<br />Verification Platform
+-            </h1>
+-            <p className="hero-desc">
+-              Digitally sign, issue, verify, and manage confidential health credentials on the **Midnight Network**.
+-              Zero medical exposure, doctor identity assurance, instant QR verification, and automated expiry rules.
+-            </p>
+-          </div>
+-        </section>
+-
+-        <div className="container">
+-          {/* Main Navigation Tab Views */}
+-          {activeTab === 'analytics' && (
+-            <AnalyticsDashboard
+-              prescriptions={prescriptions}
+-              logs={logs}
+-              verificationCount={verificationCount}
+-              contractActive={contractActive}
+-            />
+-          )}
+-
+-          {activeTab === 'doctor' && (
+-            <DoctorPortal
+-              prescriptions={prescriptions}
+-              onIssuePrescription={handleIssuePrescription}
+-              onRevokePrescription={handleRevokePrescription}
+-              onShowQR={(data, title) => setQrModal({ isOpen: true, data, title })}
+-              onNotify={addToast}
+-            />
+-          )}
+-
+-          {activeTab === 'patient' && (
+-            <PatientDashboard
+-              prescriptions={prescriptions}
+-              wallet={wallet}
+-              contractAddress={contractAddress}
+-              network={network}
+-              onVerifyPrescriptionOnChain={handleVerifyPrescriptionOnChain}
+-              onShowQR={(data, title) => setQrModal({ isOpen: true, data, title })}
+-              onNotify={addToast}
+-            />
+-          )}
+-
+-          {activeTab === 'pharmacy' && (
+-            <PharmacyPortal
+-              prescriptions={prescriptions}
+-              wallet={wallet}
+-              contractAddress={contractAddress}
+-              network={network}
+-              onVerifyPrescriptionOnChain={handleVerifyPrescriptionOnChain}
+-              onNotify={addToast}
+-            />
+-          )}
+-
+-          {activeTab === 'history' && (
+-            <VerificationHistory
+-              logs={logs}
+-              onClearLogs={() => setLogs([])}
+-            />
+-          )}
+-
+-          {activeTab === 'privacy' && (
+-            <div className="animate-fade-in">
+-              <div className="main-grid mb-32">
+-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+-                  <WalletConnect
+-                    wallet={wallet}
+-                    onConnect={handleSetWallet}
+-                    onDisconnect={() => handleSetWallet(null)}
+-                    onError={(msg) => addToast(msg, 'error')}
+-                  />
+-                  <LedgerState
+-                    contractAddress={contractAddress}
+-                    network={network}
+-                    verificationCount={verificationCount}
+-                    contractActive={contractActive}
+-                    onStateLoaded={(count, active) => {
+-                      setVerificationCount(count);
+-                      setContractActive(active);
+-                    }}
+-                  />
+-                </div>
+-
+-                <div>
+-                  <PrescriptionVerifier
+-                    wallet={wallet}
+-                    contractAddress={contractAddress}
+-                    network={network}
+-                    onVerified={() => onVerified()}
+-                    onError={(msg) => addToast(msg, 'error')}
+-                  />
+-                </div>
+-              </div>
+-
+-              <PrivacyModel />
+-            </div>
+-          )}
+-        </div>
+-      </main>
+-
+-      <footer className="footer">
+-        <div className="container">
+-          <p>
+-            Built on{' '}
+-            <a href="https://midnight.network" target="_blank" rel="noopener noreferrer">Midnight Network</a>
+-            {' '}· Preview Testnet · Zero-Knowledge Proofs · Level 3 Confidential Credentials ·{' '}
+-            <a
+-              href="https://explorer.preview.midnight.network/"
+-              target="_blank"
+-              rel="noopener noreferrer"
+-              style={{ color: 'var(--accent-teal)' }}
+-            >
+-              View Contract on Explorer
+-            </a>
+-          </p>
+-        </div>
+-      </footer>
+-
+-      <ToastContainer toasts={toasts} />
+-
+-      {qrModal.isOpen && (
+-        <QRCodeModal
+-          qrData={qrModal.data}
+-          title={qrModal.title}
+-          onClose={() => setQrModal({ isOpen: false, data: '', title: '' })}
+-          onNotify={addToast}
+-        />
+-      )}
+-    </div>
+-  );
+-}
+-
+-export default App;
+\ No newline at end of file
+diff --git a/ui/src/components/AnalyticsDashboard.tsx b/ui/src/components/AnalyticsDashboard.tsx
+deleted file mode 100644
+index e86b56e..0000000
+--- a/ui/src/components/AnalyticsDashboard.tsx
++++ /dev/null
+@@ -1,121 +0,0 @@
+-import React from 'react';
+-import type { Prescription, VerificationLog } from '../../../src/healthcare-services';
+-import { AUTHORIZED_DOCTORS, AUTHORIZED_HOSPITALS, getPrescriptionStatus } from '../../../src/healthcare-services';
+-
+-interface AnalyticsDashboardProps {
+-  prescriptions: Prescription[];
+-  logs: VerificationLog[];
+-  verificationCount: bigint | null;
+-  contractActive: boolean | null;
+-}
+-
+-export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
+-  prescriptions,
+-  logs,
+-  verificationCount,
+-  contractActive,
+-}) => {
+-  // Compute analytics
+-  const totalIssued = prescriptions.length;
+-
+-  let totalValid = 0;
+-  let totalExpired = 0;
+-  let totalRevoked = 0;
+-
+-  prescriptions.forEach(p => {
+-    const { status } = getPrescriptionStatus(p.expiryDate, p.status === 'Revoked');
+-    if (status === 'Valid') totalValid++;
+-    else if (status === 'Expired') totalExpired++;
+-    else if (status === 'Revoked') totalRevoked++;
+-  });
+-
+-  const totalVerifications = verificationCount !== null ? Number(verificationCount) : logs.filter(l => l.type === 'Verified').length;
+-  const activeDoctorsCount = AUTHORIZED_DOCTORS.filter(d => d.status === 'Active').length;
+-  const authorizedHospitalsCount = AUTHORIZED_HOSPITALS.filter(h => h.status === 'Approved').length;
+-
+-  return (
+-    <div className="analytics-dashboard animate-fade-in">
+-      <div className="section-header">
+-        <div>
+-          <h2>📊 Healthcare Telemetry & ZK Analytics</h2>
+-          <p className="subtitle">Real-time confidential verification metrics across Midnight Network</p>
+-        </div>
+-        <div className="status-indicator-badge">
+-          <span className={`dot ${contractActive ? 'dot-active' : 'dot-inactive'}`}></span>
+-          {contractActive ? 'Midnight Preview Testnet Connected' : 'Ledger Syncing...'}
+-        </div>
+-      </div>
+-
+-      <div className="analytics-grid">
+-        <div className="stat-card metric-card hover-glow">
+-          <div className="metric-header">
+-            <span className="metric-icon">📜</span>
+-            <span className="metric-tag tag-blue">Total Issued</span>
+-          </div>
+-          <div className="metric-value">{totalIssued}</div>
+-          <div className="metric-footer">Active Patient Credentials</div>
+-        </div>
+-
+-        <div className="stat-card metric-card hover-glow">
+-          <div className="metric-header">
+-            <span className="metric-icon">🛡️</span>
+-            <span className="metric-tag tag-emerald">Verified (ZK)</span>
+-          </div>
+-          <div className="metric-value gradient-text">{totalVerifications}</div>
+-          <div className="metric-footer">On-Chain Proof Completions</div>
+-        </div>
+-
+-        <div className="stat-card metric-card hover-glow">
+-          <div className="metric-header">
+-            <span className="metric-icon">⏰</span>
+-            <span className="metric-tag tag-amber">Expired</span>
+-          </div>
+-          <div className="metric-value text-warning">{totalExpired}</div>
+-          <div className="metric-footer">Auto-Expired Prescriptions</div>
+-        </div>
+-
+-        <div className="stat-card metric-card hover-glow">
+-          <div className="metric-header">
+-            <span className="metric-icon">🚫</span>
+-            <span className="metric-tag tag-rose">Revoked</span>
+-          </div>
+-          <div className="metric-value text-danger">{totalRevoked}</div>
+-          <div className="metric-footer">Doctor Revoked Credentials</div>
+-        </div>
+-
+-        <div className="stat-card metric-card hover-glow">
+-          <div className="metric-header">
+-            <span className="metric-icon">👨‍⚕️</span>
+-            <span className="metric-tag tag-purple">Active Doctors</span>
+-          </div>
+-          <div className="metric-value">{activeDoctorsCount}</div>
+-          <div className="metric-footer">Authorized Prescribers</div>
+-        </div>
+-
+-        <div className="stat-card metric-card hover-glow">
+-          <div className="metric-header">
+-            <span className="metric-icon">🏥</span>
+-            <span className="metric-tag tag-cyan">Hospitals</span>
+-          </div>
+-          <div className="metric-value">{authorizedHospitalsCount}</div>
+-          <div className="metric-footer">Approved Networks</div>
+-        </div>
+-      </div>
+-
+-      <div className="system-health-banner">
+-        <div className="health-item">
+-          <span className="health-label">ZK Proof Prover Engine</span>
+-          <span className="health-value text-success">● Preview Proof Server Active (proof-server.preview.midnight.network)</span>
+-        </div>
+-        <div className="health-item">
+-          <span className="health-label">Data Privacy Level</span>
+-          <span className="health-value text-purple">● Zero Medical Exposure (Level 3)</span>
+-        </div>
+-        <div className="health-item">
+-          <span className="health-label">Compact Circuit Security</span>
+-          <span className="health-value text-cyan">● Witness Proof Verification Active</span>
+-        </div>
+-      </div>
+-    </div>
+-  );
+-};
+diff --git a/ui/src/components/DoctorPortal.tsx b/ui/src/components/DoctorPortal.tsx
+deleted file mode 100644
+index c0f3c9e..0000000
+--- a/ui/src/components/DoctorPortal.tsx
++++ /dev/null
+@@ -1,463 +0,0 @@
+-import React, { useState } from 'react';
+-import type { Prescription } from '../../../src/healthcare-services';
+-import {
+-  AUTHORIZED_DOCTORS,
+-  AUTHORIZED_HOSPITALS,
+-  calculatePrescriptionHash,
+-  generateDoctorSignature,
+-  getPrescriptionStatus,
+-} from '../../../src/healthcare-services';
+-import { PrescriptionViewModal } from './PrescriptionViewModal';
+-
+-interface DoctorPortalProps {
+-  prescriptions: Prescription[];
+-  onIssuePrescription: (prescription: Prescription) => void;
+-  onRevokePrescription: (id: string, reason: string) => void;
+-  onShowQR: (qrData: string, title: string) => void;
+-  onNotify: (msg: string, type: 'success' | 'error' | 'info') => void;
+-}
+-
+-export const DoctorPortal: React.FC<DoctorPortalProps> = ({
+-  prescriptions,
+-  onIssuePrescription,
+-  onRevokePrescription,
+-  onShowQR,
+-  onNotify,
+-}) => {
+-  const [selectedDoctorId, setSelectedDoctorId] = useState<string>(AUTHORIZED_DOCTORS[0].id);
+-  const [patientName, setPatientName] = useState<string>('Alex Rivera');
+-  const [patientId, setPatientId] = useState<number>(105);
+-  const [medicationName, setMedicationName] = useState<string>('Amoxicillin 500mg');
+-  const [dosage, setDosage] = useState<string>('1 capsule every 8 hours (10 days)');
+-  const [instructions, setInstructions] = useState<string>('Take after meals with full glass of water.');
+-
+-  // Default dates: issue today, expiry +30 days
+-  const todayStr = new Date().toISOString().split('T')[0];
+-  const defaultExpiryStr = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+-
+-  const [issueDate, setIssueDate] = useState<string>(todayStr);
+-  const [expiryDate, setExpiryDate] = useState<string>(defaultExpiryStr);
+-
+-  // Success Confirmation State & Modal State
+-  const [lastIssuedRx, setLastIssuedRx] = useState<Prescription | null>(null);
+-  const [viewingRx, setViewingRx] = useState<Prescription | null>(null);
+-
+-  // Search & Filter State
+-  const [searchTerm, setSearchTerm] = useState<string>('');
+-  const [filterStatus, setFilterStatus] = useState<'All' | 'Active' | 'Expired' | 'Revoked'>('All');
+-
+-  const doctor = AUTHORIZED_DOCTORS.find(d => d.id === selectedDoctorId) || AUTHORIZED_DOCTORS[0];
+-  const hospital = AUTHORIZED_HOSPITALS.find(h => h.id === doctor.hospitalId) || AUTHORIZED_HOSPITALS[0];
+-
+-  const handleCreate = (e: React.FormEvent) => {
+-    e.preventDefault();
+-    if (!patientName || !medicationName || !dosage) {
+-      onNotify('Please complete all required prescription fields.', 'error');
+-      return;
+-    }
+-
+-    const rxCount = prescriptions.length + 1;
+-    const formattedId = `RX-${String(rxCount).padStart(6, '0')}`;
+-
+-    const hash = calculatePrescriptionHash({
+-      patientId,
+-      medicationName,
+-      dosage,
+-      doctorId: doctor.id,
+-      issueDate,
+-      expiryDate,
+-    });
+-
+-    const sig = generateDoctorSignature(hash, doctor.publicKey);
+-
+-    const newRx: Prescription = {
+-      id: formattedId,
+-      patientId,
+-      patientName,
+-      medicationName,
+-      dosage,
+-      instructions,
+-      doctorId: doctor.id,
+-      doctorName: doctor.name,
+-      doctorLicense: doctor.licenseNumber,
+-      hospitalId: hospital.id,
+-      hospitalName: hospital.name,
+-      issueDate,
+-      expiryDate,
+-      prescriptionHash: hash,
+-      doctorSignature: sig,
+-      status: 'Valid',
+-      createdAt: Date.now(),
+-    };
+-
+-    onIssuePrescription(newRx);
+-    setLastIssuedRx(newRx);
+-    onNotify(`Confidential Prescription #${formattedId} issued & signed!`, 'success');
+-  };
+-
+-  // Filtered prescription list
+-  const filteredPrescriptions = prescriptions.filter(rx => {
+-    const { status } = getPrescriptionStatus(rx.expiryDate, rx.status === 'Revoked');
+-
+-    // Filter by status
+-    if (filterStatus === 'Active' && status !== 'Valid') return false;
+-    if (filterStatus === 'Expired' && status !== 'Expired') return false;
+-    if (filterStatus === 'Revoked' && status !== 'Revoked') return false;
+-
+-    // Search by ID or Patient Slot
+-    if (searchTerm.trim()) {
+-      const term = searchTerm.toLowerCase();
+-      const matchId = rx.id.toLowerCase().includes(term);
+-      const matchSlot = String(rx.patientId).includes(term);
+-      const matchMed = rx.medicationName.toLowerCase().includes(term);
+-      const matchDoc = rx.doctorName.toLowerCase().includes(term);
+-      return matchId || matchSlot || matchMed || matchDoc;
+-    }
+-
+-    return true;
+-  });
+-
+-  return (
+-    <div className="doctor-portal animate-slide-up">
+-      <div className="section-header">
+-        <div>
+-          <h2>👨‍⚕️ Authorized Doctor Portal & Hospital Allowlist</h2>
+-          <p className="subtitle">Issue digitally signed confidential credentials & manage revocations</p>
+-        </div>
+-        <div className="allowlist-tag">
+-          🔒 Certified Prescriber Environment
+-        </div>
+-      </div>
+-
+-      {/* Success Confirmation Card Banner */}
+-      {lastIssuedRx && (
+-        <div className="card glass-card success-issuance-banner mb-24 animate-scale-up">
+-          <div className="banner-header">
+-            <span className="banner-icon">✅</span>
+-            <div>
+-              <h3 className="text-success">Confidential Prescription Successfully Issued</h3>
+-              <div className="text-xs text-muted">Secured on Midnight Network via Zero-Knowledge Proofs</div>
+-            </div>
+-            <button className="close-btn" onClick={() => setLastIssuedRx(null)}>×</button>
+-          </div>
+-
+-          <div className="issuance-details-grid mt-16">
+-            <div className="detail-chip">
+-              <span className="chip-label">Prescription ID</span>
+-              <span className="chip-value font-mono font-bold text-cyan">{lastIssuedRx.id}</span>
+-            </div>
+-            <div className="detail-chip">
+-              <span className="chip-label">Doctor</span>
+-              <span className="chip-value">{lastIssuedRx.doctorName}</span>
+-            </div>
+-            <div className="detail-chip">
+-              <span className="chip-label">Patient Slot</span>
+-              <span className="chip-value font-bold">Slot #{lastIssuedRx.patientId}</span>
+-            </div>
+-            <div className="detail-chip">
+-              <span className="chip-label">Issue Date</span>
+-              <span className="chip-value">{lastIssuedRx.issueDate}</span>
+-            </div>
+-            <div className="detail-chip">
+-              <span className="chip-label">Expiry Date</span>
+-              <span className="chip-value">{lastIssuedRx.expiryDate}</span>
+-            </div>
+-            <div className="detail-chip">
+-              <span className="chip-label">Digital Signature</span>
+-              <span className="chip-value text-success font-bold">Verified ✓</span>
+-            </div>
+-          </div>
+-
+-          <div className="banner-actions mt-16">
+-            <button
+-              onClick={() => setViewingRx(lastIssuedRx)}
+-              className="btn btn-primary btn-sm"
+-            >
+-              👁 View Prescription
+-            </button>
+-            <span className="v-badge v-badge-emerald">✅ Confidential</span>
+-            <span className="v-badge v-badge-purple">✅ Signed</span>
+-            <span className="v-badge v-badge-cyan">✅ Zero-Knowledge Protected</span>
+-          </div>
+-        </div>
+-      )}
+-
+-      <div className="grid-2col">
+-        {/* Issue Prescription Form */}
+-        <div className="card glass-card">
+-          <div className="card-header">
+-            <h3>✍️ Issue Confidential Prescription</h3>
+-            <span className="badge badge-primary">Digital Signature Active</span>
+-          </div>
+-
+-          <form onSubmit={handleCreate} className="prescription-form">
+-            <div className="form-group">
+-              <label>Select Authorized Doctor</label>
+-              <select
+-                value={selectedDoctorId}
+-                onChange={e => setSelectedDoctorId(e.target.value)}
+-                className="form-input"
+-              >
+-                {AUTHORIZED_DOCTORS.map(d => (
+-                  <option key={d.id} value={d.id}>
+-                    {d.name} — {d.specialisation} ({d.hospitalName})
+-                  </option>
+-                ))}
+-              </select>
+-            </div>
+-
+-            <div className="doctor-details-box">
+-              <div><strong>License:</strong> {doctor.licenseNumber}</div>
+-              <div><strong>Hospital:</strong> {doctor.hospitalName} ({hospital.licenseCode})</div>
+-              <div className="font-mono text-muted text-xs truncate"><strong>Public Key:</strong> {doctor.publicKey}</div>
+-            </div>
+-
+-            <div className="form-row">
+-              <div className="form-group">
+-                <label>Patient Name (Stays Private)</label>
+-                <input
+-                  type="text"
+-                  value={patientName}
+-                  onChange={e => setPatientName(e.target.value)}
+-                  className="form-input"
+-                  placeholder="Patient Full Name"
+-                  required
+-                />
+-              </div>
+-
+-              <div className="form-group">
+-                <label>Circuit Patient Slot ID</label>
+-                <input
+-                  type="number"
+-                  value={patientId}
+-                  onChange={e => setPatientId(Number(e.target.value))}
+-                  className="form-input"
+-                  required
+-                />
+-              </div>
+-            </div>
+-
+-            <div className="form-group">
+-              <label>Medication Name (Stays Private)</label>
+-              <input
+-                type="text"
+-                value={medicationName}
+-                onChange={e => setMedicationName(e.target.value)}
+-                className="form-input"
+-                placeholder="e.g. Amoxicillin 500mg"
+-                required
+-              />
+-            </div>
+-
+-            <div className="form-group">
+-              <label>Dosage & Frequency</label>
+-              <input
+-                type="text"
+-                value={dosage}
+-                onChange={e => setDosage(e.target.value)}
+-                className="form-input"
+-                placeholder="e.g. 1 capsule every 8 hours"
+-                required
+-              />
+-            </div>
+-
+-            <div className="form-row">
+-              <div className="form-group">
+-                <label>Issue Date</label>
+-                <input
+-                  type="date"
+-                  value={issueDate}
+-                  onChange={e => setIssueDate(e.target.value)}
+-                  className="form-input"
+-                  required
+-                />
+-              </div>
+-
+-              <div className="form-group">
+-                <label>Expiry Date</label>
+-                <input
+-                  type="date"
+-                  value={expiryDate}
+-                  onChange={e => setExpiryDate(e.target.value)}
+-                  className="form-input"
+-                  required
+-                />
+-              </div>
+-            </div>
+-
+-            <div className="form-group">
+-              <label>Special Instructions</label>
+-              <textarea
+-                value={instructions}
+-                onChange={e => setInstructions(e.target.value)}
+-                className="form-input"
+-                rows={2}
+-              />
+-            </div>
+-
+-            <button type="submit" className="btn btn-primary btn-block">
+-              🔐 Issue & Sign Confidential Prescription
+-            </button>
+-          </form>
+-        </div>
+-
+-        {/* Hospital Allowlist */}
+-        <div className="flex-column gap-20">
+-          <div className="card glass-card">
+-            <h3>🏥 Approved Hospital Network Allowlist</h3>
+-            <div className="allowlist-list">
+-              {AUTHORIZED_HOSPITALS.map(h => (
+-                <div key={h.id} className="allowlist-item">
+-                  <div className="allowlist-info">
+-                    <span className="allowlist-name">{h.name}</span>
+-                    <span className="allowlist-city">{h.city} • Code: {h.licenseCode}</span>
+-                  </div>
+-                  <span className="badge badge-success">✓ {h.status} ({h.verifiedDoctorsCount} Doctors)</span>
+-                </div>
+-              ))}
+-            </div>
+-          </div>
+-
+-          <div className="card glass-card">
+-            <h3>🔒 Zero-Knowledge Security Policy</h3>
+-            <p className="text-muted text-sm">
+-              All credentials issued via RxVerify automatically include cryptographic signatures and local SHA-256 digests.
+-              No prescription content is published to the blockchain.
+-            </p>
+-          </div>
+-        </div>
+-      </div>
+-
+-      {/* "My Issued Prescriptions" Section */}
+-      <div className="card glass-card mt-32">
+-        <div className="section-header mb-16">
+-          <div>
+-            <h3>📋 My Issued Prescriptions</h3>
+-            <p className="subtitle">All confidential prescriptions issued during the current session</p>
+-          </div>
+-        </div>
+-
+-        {/* Search & Filter Toolbar */}
+-        <div className="filter-toolbar mb-20">
+-          <div className="form-group search-input-group flex-1">
+-            <input
+-              type="text"
+-              value={searchTerm}
+-              onChange={e => setSearchTerm(e.target.value)}
+-              placeholder="🔍 Search by Prescription ID, Patient Slot, Medication, or Doctor..."
+-              className="form-input"
+-            />
+-          </div>
+-
+-          <div className="filter-button-group">
+-            {(['All', 'Active', 'Expired', 'Revoked'] as const).map(status => (
+-              <button
+-                key={status}
+-                onClick={() => setFilterStatus(status)}
+-                className={`filter-btn ${filterStatus === status ? 'active' : ''}`}
+-              >
+-                {status === 'All' && 'All'}
+-                {status === 'Active' && '🟢 Active'}
+-                {status === 'Expired' && '🟡 Expired'}
+-                {status === 'Revoked' && '🔴 Revoked'}
+-              </button>
+-            ))}
+-          </div>
+-        </div>
+-
+-        {/* Prescription List Table */}
+-        {filteredPrescriptions.length === 0 ? (
+-          <div className="empty-state-box">
+-            <div className="empty-icon">💊</div>
+-            <h4>No confidential prescriptions have been issued yet.</h4>
+-            <p className="text-xs text-muted mt-4">
+-              {searchTerm || filterStatus !== 'All'
+-                ? 'No prescriptions match your active search filter.'
+-                : 'Fill in the form above to issue your first signed prescription.'}
+-            </p>
+-          </div>
+-        ) : (
+-          <div className="table-responsive">
+-            <table className="modern-table">
+-              <thead>
+-                <tr>
+-                  <th>Prescription ID</th>
+-                  <th>Doctor</th>
+-                  <th>Patient Slot</th>
+-                  <th>Medication</th>
+-                  <th>Issue / Expiry</th>
+-                  <th>Current Status</th>
+-                  <th>Verification Badges</th>
+-                  <th>Actions</th>
+-                </tr>
+-              </thead>
+-              <tbody>
+-                {filteredPrescriptions.map(rx => {
+-                  const { status } = getPrescriptionStatus(rx.expiryDate, rx.status === 'Revoked');
+-
+-                  return (
+-                    <tr key={rx.id}>
+-                      <td className="font-mono font-bold text-cyan">{rx.id}</td>
+-                      <td className="font-medium">{rx.doctorName}</td>
+-                      <td>
+-                        <span className="slot-badge">Slot #{rx.patientId}</span>
+-                      </td>
+-                      <td>{rx.medicationName}</td>
+-                      <td className="text-xs text-muted">
+-                        {rx.issueDate} → {rx.expiryDate}
+-                      </td>
+-                      <td>
+-                        {status === 'Valid' && <span className="status-pill status-active">🟢 Active</span>}
+-                        {status === 'Expired' && <span className="status-pill status-expired">🟡 Expired</span>}
+-                        {status === 'Revoked' && <span className="status-pill status-revoked">🔴 Revoked</span>}
+-                      </td>
+-                      <td>
+-                        <div className="v-badges-compact">
+-                          <span className="v-tag" title="Confidential">✅ Confidential</span>
+-                          <span className="v-tag" title="Signed">✅ Signed</span>
+-                          <span className="v-tag" title="Zero-Knowledge Protected">✅ ZK</span>
+-                        </div>
+-                      </td>
+-                      <td>
+-                        <div className="flex-row gap-8">
+-                          <button
+-                            onClick={() => setViewingRx(rx)}
+-                            className="btn btn-secondary btn-sm"
+-                          >
+-                            👁 View
+-                          </button>
+-                          {status !== 'Revoked' && (
+-                            <button
+-                              onClick={() => {
+-                                const reason = prompt('Reason for revocation:', 'Treatment complete / Prescriber update') || 'Doctor update';
+-                                onRevokePrescription(rx.id, reason);
+-                                onNotify(`Prescription #${rx.id} revoked!`, 'info');
+-                              }}
+-                              className="btn btn-danger btn-sm"
+-                            >
+-                              Revoke
+-                            </button>
+-                          )}
+-                        </div>
+-                      </td>
+-                    </tr>
+-                  );
+-                })}
+-              </tbody>
+-            </table>
+-          </div>
+-        )}
+-      </div>
+-
+-      {/* View Prescription Modal */}
+-      {viewingRx && (
+-        <PrescriptionViewModal
+-          prescription={viewingRx}
+-          onClose={() => setViewingRx(null)}
+-          onShowQR={onShowQR}
+-          onNotify={onNotify}
+-        />
+-      )}
+-    </div>
+-  );
+-};
+diff --git a/ui/src/components/Header.tsx b/ui/src/components/Header.tsx
+deleted file mode 100644
+index d67f163..0000000
+--- a/ui/src/components/Header.tsx
++++ /dev/null
+@@ -1,101 +0,0 @@
+-import React from 'react';
+-import type { WalletState, TabType } from '../types';
+-
+-interface HeaderProps {
+-  network: string;
+-  wallet: WalletState | null;
+-  activeTab: TabType;
+-  onSelectTab: (tab: TabType) => void;
+-  onConnectWallet: () => void;
+-  onDisconnect: () => void;
+-}
+-
+-export function Header({ network, wallet, activeTab, onSelectTab, onConnectWallet, onDisconnect }: HeaderProps) {
+-  const networkColors: Record<string, string> = {
+-    undeployed: '#34d399',
+-    preview: '#fb923c',
+-    preprod: '#a78bfa',
+-    mainnet: '#4da6ff',
+-  };
+-  const dotColor = networkColors[network] || '#34d399';
+-
+-  return (
+-    <header className="header">
+-      <div className="container">
+-        <div className="header-inner">
+-          <div className="logo" onClick={() => onSelectTab('analytics')} style={{ cursor: 'pointer' }}>
+-            <div className="logo-icon">💊</div>
+-            <div>
+-              <div className="logo-text">RxVerify</div>
+-              <div className="logo-sub">Midnight Confidential Healthcare</div>
+-            </div>
+-          </div>
+-
+-          <nav className="header-nav">
+-            <button
+-              className={`nav-tab ${activeTab === 'analytics' ? 'active' : ''}`}
+-              onClick={() => onSelectTab('analytics')}
+-            >
+-              📊 Telemetry
+-            </button>
+-            <button
+-              className={`nav-tab ${activeTab === 'doctor' ? 'active' : ''}`}
+-              onClick={() => onSelectTab('doctor')}
+-            >
+-              👨‍⚕️ Doctor Portal
+-            </button>
+-            <button
+-              className={`nav-tab ${activeTab === 'patient' ? 'active' : ''}`}
+-              onClick={() => onSelectTab('patient')}
+-            >
+-              😷 Patient View
+-            </button>
+-            <button
+-              className={`nav-tab ${activeTab === 'pharmacy' ? 'active' : ''}`}
+-              onClick={() => onSelectTab('pharmacy')}
+-            >
+-              🏥 Pharmacy Portal
+-            </button>
+-            <button
+-              className={`nav-tab ${activeTab === 'history' ? 'active' : ''}`}
+-              onClick={() => onSelectTab('history')}
+-            >
+-              📜 Audit History
+-            </button>
+-            <button
+-              className={`nav-tab ${activeTab === 'privacy' ? 'active' : ''}`}
+-              onClick={() => onSelectTab('privacy')}
+-            >
+-              🔒 Privacy Model
+-            </button>
+-          </nav>
+-
+-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+-            <div className="network-badge">
+-              <div className="network-dot" style={{ background: dotColor, boxShadow: `0 0 8px ${dotColor}` }} />
+-              <span style={{ color: dotColor, fontWeight: 500 }}>{network}</span>
+-            </div>
+-
+-            {wallet ? (
+-              <button
+-                id="wallet-disconnect-btn"
+-                className="btn btn-sm btn-outline"
+-                onClick={onDisconnect}
+-              >
+-                Disconnect
+-              </button>
+-            ) : (
+-              <button
+-                id="header-connect-btn"
+-                className="btn btn-sm btn-primary"
+-                onClick={onConnectWallet}
+-              >
+-                👛 Connect Lace
+-              </button>
+-            )}
+-          </div>
+-        </div>
+-      </div>
+-    </header>
+-  );
+-}
+\ No newline at end of file
+diff --git a/ui/src/components/LedgerState.tsx b/ui/src/components/LedgerState.tsx
+deleted file mode 100644
+index f171620..0000000
+--- a/ui/src/components/LedgerState.tsx
++++ /dev/null
+@@ -1,129 +0,0 @@
+-import React, { useEffect, useState } from 'react';
+-
+-interface LedgerStateProps {
+-  contractAddress: string;
+-  network: string;
+-  verificationCount: bigint | null;
+-  contractActive: boolean | null;
+-  onStateLoaded: (count: bigint, active: boolean) => void;
+-}
+-
+-export function LedgerState({ contractAddress, network, verificationCount, contractActive, onStateLoaded }: LedgerStateProps) {
+-  const [isLoading, setIsLoading] = useState(false);
+-  const [error, setError] = useState('');
+-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+-
+-  const fetchState = async () => {
+-    if (!contractAddress) return;
+-    setIsLoading(true);
+-    setError('');
+-    try {
+-      // In production: query via indexer GraphQL
+-      // For local devnet, we simulate with the known contract state
+-      await new Promise(r => setTimeout(r, 800));
+-
+-      // Simulated state - in production would call:
+-      // const response = await fetch(`${indexerUrl}/api/v4/graphql`, { ... });
+-      onStateLoaded(verificationCount ?? 0n, contractActive ?? true);
+-      setLastUpdated(new Date());
+-    } catch (err) {
+-      setError(err instanceof Error ? err.message : 'Failed to fetch ledger state');
+-    } finally {
+-      setIsLoading(false);
+-    }
+-  };
+-
+-  useEffect(() => {
+-    if (contractAddress) fetchState();
+-    const interval = setInterval(fetchState, 30000);
+-    return () => clearInterval(interval);
+-  }, [contractAddress]);
+-
+-  return (
+-    <div className="card">
+-      <div className="card-title" style={{ marginBottom: '16px' }}>
+-        <span className="card-title-icon">📊</span>
+-        Public Ledger State
+-        <button
+-          id="refresh-ledger-btn"
+-          className="btn btn-sm btn-outline"
+-          onClick={fetchState}
+-          disabled={isLoading}
+-          style={{ marginLeft: 'auto', padding: '4px 10px', fontSize: '12px' }}
+-        >
+-          {isLoading ? <span className="spinner" style={{ width: '12px', height: '12px', borderWidth: '1.5px' }} /> : '↻'}
+-        </button>
+-      </div>
+-
+-      {!contractAddress ? (
+-        <div className="alert alert-warning">
+-          <span className="alert-icon">⚠️</span>
+-          <div>
+-            <strong>No contract address configured.</strong>
+-            <br />Set <code>VITE_CONTRACT_ADDRESS</code> in <code>.env.local</code>
+-          </div>
+-        </div>
+-      ) : (
+-        <>
+-          <div id="ledger-state-display">
+-            <div className="ledger-item">
+-              <div>
+-                <div className="ledger-key">verificationCount</div>
+-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>Public aggregate — visible on-chain</div>
+-              </div>
+-              {isLoading && verificationCount === null ? (
+-                <div className="skeleton skeleton-value" style={{ width: '60px' }} />
+-              ) : (
+-                <div className="ledger-value gradient-text" id="verification-count">
+-                  {verificationCount !== null ? verificationCount.toString() : '0'}
+-                </div>
+-              )}
+-            </div>
+-
+-            <div className="ledger-item">
+-              <div>
+-                <div className="ledger-key">contractActive</div>
+-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>Contract operational status</div>
+-              </div>
+-              {isLoading && contractActive === null ? (
+-                <div className="skeleton skeleton-value" style={{ width: '60px' }} />
+-              ) : (
+-                <div className="ledger-value" id="contract-active-status" style={{ color: contractActive !== false ? 'var(--accent-teal)' : '#fc8181' }}>
+-                  {contractActive !== false ? 'true' : 'false'}
+-                </div>
+-              )}
+-            </div>
+-          </div>
+-
+-          <div style={{ marginTop: '16px', padding: '12px', background: 'var(--bg-input)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+-            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>Contract Address — Midnight Preview Testnet</div>
+-            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', color: 'var(--text-secondary)', wordBreak: 'break-all' }}>
+-              {contractAddress}
+-            </div>
+-            <a
+-              href="https://explorer.preview.midnight.network/"
+-              target="_blank"
+-              rel="noopener noreferrer"
+-              style={{ display: 'inline-block', marginTop: '8px', fontSize: '11px', color: 'var(--accent-teal)', textDecoration: 'none', borderBottom: '1px solid var(--accent-teal)' }}
+-            >
+-              🔗 View on Midnight Explorer (Paste address in search bar) →
+-            </a>
+-          </div>
+-
+-          {lastUpdated && (
+-            <div style={{ marginTop: '10px', fontSize: '11px', color: 'var(--text-muted)', textAlign: 'right' }}>
+-              Updated {lastUpdated.toLocaleTimeString()}
+-            </div>
+-          )}
+-
+-          {error && (
+-            <div className="alert alert-error" style={{ marginTop: '12px' }}>
+-              <span className="alert-icon">❌</span>
+-              <div>{error}</div>
+-            </div>
+-          )}
+-        </>
+-      )}
+-    </div>
+-  );
+-}
+\ No newline at end of file
+diff --git a/ui/src/components/PatientDashboard.tsx b/ui/src/components/PatientDashboard.tsx
+deleted file mode 100644
+index ec40d51..0000000
+--- a/ui/src/components/PatientDashboard.tsx
++++ /dev/null
+@@ -1,171 +0,0 @@
+-import React, { useState } from 'react';
+-import type { Prescription, ProofToken } from '../../../src/healthcare-services';
+-import { formatExpiryBadge, createProofToken, encodeQRPayload } from '../../../src/healthcare-services';
+-import type { WalletState } from '../types';
+-
+-interface PatientDashboardProps {
+-  prescriptions: Prescription[];
+-  wallet: WalletState | null;
+-  contractAddress: string;
+-  network: string;
+-  onVerifyPrescriptionOnChain: (prescription: Prescription) => Promise<void>;
+-  onShowQR: (qrData: string, title: string) => void;
+-  onNotify: (msg: string, type: 'success' | 'error' | 'info') => void;
+-}
+-
+-export const PatientDashboard: React.FC<PatientDashboardProps> = ({
+-  prescriptions,
+-  wallet,
+-  contractAddress,
+-  network,
+-  onVerifyPrescriptionOnChain,
+-  onShowQR,
+-  onNotify,
+-}) => {
+-  const [activeTabRx, setActiveTabRx] = useState<string | null>(null);
+-  const [shareDuration, setShareDuration] = useState<number>(60); // 60 mins default
+-  const [activeProofToken, setActiveProofToken] = useState<ProofToken | null>(null);
+-  const [verifyingId, setVerifyingId] = useState<string | null>(null);
+-
+-  const handleGenerateShareToken = (rx: Prescription) => {
+-    const token = createProofToken(rx, shareDuration);
+-    setActiveProofToken(token);
+-    const payload = encodeQRPayload(token);
+-    onShowQR(payload, `Temporary ZK Proof Token (${shareDuration} mins)`);
+-    onNotify(`Temporary ZK proof token generated! Expires in ${shareDuration} minutes.`, 'success');
+-  };
+-
+-  return (
+-    <div className="patient-dashboard animate-slide-up">
+-      <div className="section-header">
+-        <div>
+-          <h2>😷 Patient Prescription Management Dashboard</h2>
+-          <p className="subtitle">View private credentials, generate zero-knowledge proofs, and share temporary tokens</p>
+-        </div>
+-        <div className="patient-privacy-tag">
+-          🔒 Private Off-Chain Storage Active
+-        </div>
+-      </div>
+-
+-      {prescriptions.length === 0 ? (
+-        <div className="card glass-card empty-state-box">
+-          <div className="empty-icon">💊</div>
+-          <h3>No Prescriptions Found</h3>
+-          <p>You have no active prescriptions in your local private wallet state.</p>
+-          <p className="text-sm text-muted">Use the <strong>Doctor Portal</strong> to issue your first signed prescription.</p>
+-        </div>
+-      ) : (
+-        <div className="patient-grid">
+-          {prescriptions.map(rx => {
+-            const badge = formatExpiryBadge(rx.expiryDate, rx.status === 'Revoked');
+-            const isVerifying = verifyingId === rx.id;
+-
+-            return (
+-              <div key={rx.id} className="card glass-card prescription-card hover-glow">
+-                <div className="rx-card-header">
+-                  <span className="rx-med-name">{rx.medicationName}</span>
+-                  <span className={`badge ${badge.badgeClass}`}>{badge.label}</span>
+-                </div>
+-
+-                <div className="rx-card-body">
+-                  <div className="rx-detail-row">
+-                    <span className="rx-label">Dosage:</span>
+-                    <span className="rx-value">{rx.dosage}</span>
+-                  </div>
+-
+-                  <div className="rx-detail-row">
+-                    <span className="rx-label">Patient:</span>
+-                    <span className="rx-value">{rx.patientName} (Slot #{rx.patientId})</span>
+-                  </div>
+-
+-                  <div className="rx-detail-row">
+-                    <span className="rx-label">Prescriber:</span>
+-                    <span className="rx-value">{rx.doctorName}</span>
+-                  </div>
+-
+-                  <div className="rx-detail-row">
+-                    <span className="rx-label">Hospital:</span>
+-                    <span className="rx-value">{rx.hospitalName}</span>
+-                  </div>
+-
+-                  <div className="rx-detail-row">
+-                    <span className="rx-label">Issued / Expires:</span>
+-                    <span className="rx-value">{rx.issueDate} → {rx.expiryDate}</span>
+-                  </div>
+-
+-                  <div className="rx-hash-box">
+-                    <div className="text-xs text-muted font-mono truncate">
+-                      <strong>Hash:</strong> {rx.prescriptionHash}
+-                    </div>
+-                  </div>
+-                </div>
+-
+-                <div className="rx-card-actions">
+-                  <button
+-                    onClick={async () => {
+-                      setVerifyingId(rx.id);
+-                      try {
+-                        await onVerifyPrescriptionOnChain(rx);
+-                      } finally {
+-                        setVerifyingId(null);
+-                      }
+-                    }}
+-                    disabled={isVerifying || rx.status === 'Revoked'}
+-                    className="btn btn-primary btn-sm flex-1"
+-                  >
+-                    {isVerifying ? (
+-                      <span className="flex-center gap-8">
+-                        <span className="spinner"></span> Proving ZK...
+-                      </span>
+-                    ) : (
+-                      '🔐 Verify On-Chain'
+-                    )}
+-                  </button>
+-
+-                  <button
+-                    onClick={() => {
+-                      const payload = encodeQRPayload(rx);
+-                      onShowQR(payload, `Prescription #${rx.id} ZK Payload`);
+-                    }}
+-                    className="btn btn-secondary btn-sm"
+-                  >
+-                    📱 QR Code
+-                  </button>
+-
+-                  <button
+-                    onClick={() => handleGenerateShareToken(rx)}
+-                    className="btn btn-outline btn-sm"
+-                  >
+-                    ⏳ Anonymous Share
+-                  </button>
+-                </div>
+-              </div>
+-            );
+-          })}
+-        </div>
+-      )}
+-
+-      {/* Share Duration Control */}
+-      <div className="card glass-card mt-24">
+-        <h3>⏳ Anonymous Temporary ZK Proof Link Configurator</h3>
+-        <p className="text-muted text-sm mb-16">
+-          Generate temporary proofs that automatically expire after a set duration. Third-party verifiers can confirm prescription authenticity without access to full details.
+-        </p>
+-
+-        <div className="flex-row gap-16 align-center">
+-          <label className="font-bold text-sm">Token Validity Duration:</label>
+-          <select
+-            value={shareDuration}
+-            onChange={e => setShareDuration(Number(e.target.value))}
+-            className="form-input width-auto"
+-          >
+-            <option value={15}>15 Minutes (Quick Pharmacy Check)</option>
+-            <option value={60}>1 Hour (Standard Access)</option>
+-            <option value={1440}>24 Hours (Day Pass)</option>
+-          </select>
+-          <span className="text-xs text-muted">Proofs auto-invalidate when timer expires.</span>
+-        </div>
+-      </div>
+-    </div>
+-  );
+-};
+diff --git a/ui/src/components/PharmacyPortal.tsx b/ui/src/components/PharmacyPortal.tsx
+deleted file mode 100644
+index ad53a7d..0000000
+--- a/ui/src/components/PharmacyPortal.tsx
++++ /dev/null
+@@ -1,260 +0,0 @@
+-import React, { useState } from 'react';
+-import type { Prescription } from '../../../src/healthcare-services';
+-import {
+-  AUTHORIZED_DOCTORS,
+-  AUTHORIZED_HOSPITALS,
+-  parseQRPayload,
+-  getPrescriptionStatus,
+-  verifyDoctorSignature,
+-} from '../../../src/healthcare-services';
+-import type { WalletState } from '../types';
+-
+-interface PharmacyPortalProps {
+-  prescriptions: Prescription[];
+-  wallet: WalletState | null;
+-  contractAddress: string;
+-  network: string;
+-  onVerifyPrescriptionOnChain: (prescription: Prescription) => Promise<void>;
+-  onNotify: (msg: string, type: 'success' | 'error' | 'info') => void;
+-}
+-
+-export const PharmacyPortal: React.FC<PharmacyPortalProps> = ({
+-  prescriptions,
+-  wallet,
+-  contractAddress,
+-  network,
+-  onVerifyPrescriptionOnChain,
+-  onNotify,
+-}) => {
+-  const [inputToken, setInputToken] = useState<string>('');
+-  const [selectedRxId, setSelectedRxId] = useState<string>('');
+-  const [verifying, setVerifying] = useState<boolean>(false);
+-  const [verificationResult, setVerificationResult] = useState<{
+-    status: 'SUCCESS' | 'EXPIRED' | 'REVOKED' | 'FAILED';
+-    doctorName?: string;
+-    hospitalName?: string;
+-    message: string;
+-    timestamp: number;
+-  } | null>(null);
+-
+-  const handleVerify = async (rxToVerify?: Prescription) => {
+-    setVerifying(true);
+-    setVerificationResult(null);
+-
+-    try {
+-      let targetRx: Prescription | undefined = rxToVerify;
+-
+-      if (!targetRx && selectedRxId) {
+-        targetRx = prescriptions.find(p => p.id === selectedRxId);
+-      }
+-
+-      if (!targetRx && inputToken) {
+-        const parsed = parseQRPayload(inputToken);
+-        if (parsed) {
+-          targetRx = prescriptions.find(p => p.prescriptionHash === parsed.hash || p.id === parsed.id);
+-        }
+-      }
+-
+-      if (!targetRx) {
+-        if (prescriptions.length > 0) {
+-          targetRx = prescriptions[0];
+-        } else {
+-          setVerificationResult({
+-            status: 'FAILED',
+-            message: 'No matching prescription or ZK token payload found in local provider database.',
+-            timestamp: Date.now(),
+-          });
+-          onNotify('Verification failed: Prescription token not recognized.', 'error');
+-          return;
+-        }
+-      }
+-
+-      // Check Revocation
+-      if (targetRx.status === 'Revoked') {
+-        setVerificationResult({
+-          status: 'REVOKED',
+-          doctorName: targetRx.doctorName,
+-          hospitalName: targetRx.hospitalName,
+-          message: 'Prescription Revoked! Prescriber has invalidated this credential on-chain.',
+-          timestamp: Date.now(),
+-        });
+-        onNotify('Verification Result: Prescription Revoked by Doctor.', 'error');
+-        return;
+-      }
+-
+-      // Check Expiry
+-      const expiryCheck = getPrescriptionStatus(targetRx.expiryDate, false);
+-      if (expiryCheck.status === 'Expired') {
+-        setVerificationResult({
+-          status: 'EXPIRED',
+-          doctorName: targetRx.doctorName,
+-          hospitalName: targetRx.hospitalName,
+-          message: `Prescription Expired on ${targetRx.expiryDate}. Cannot be fulfilled.`,
+-          timestamp: Date.now(),
+-        });
+-        onNotify('Verification Result: Prescription Expired.', 'error');
+-        return;
+-      }
+-
+-      // Check Doctor Allowlist & Signature
+-      const doctor = AUTHORIZED_DOCTORS.find(d => d.id === targetRx?.doctorId);
+-      const hospital = AUTHORIZED_HOSPITALS.find(h => h.id === targetRx?.hospitalId);
+-
+-      if (!doctor || doctor.status !== 'Active') {
+-        setVerificationResult({
+-          status: 'FAILED',
+-          message: 'Prescribing doctor is not on the certified active allowlist.',
+-          timestamp: Date.now(),
+-        });
+-        onNotify('Verification Result: Unauthorized Doctor.', 'error');
+-        return;
+-      }
+-
+-      if (!hospital || hospital.status !== 'Approved') {
+-        setVerificationResult({
+-          status: 'FAILED',
+-          message: 'Issuing hospital network is not approved.',
+-          timestamp: Date.now(),
+-        });
+-        onNotify('Verification Result: Unapproved Hospital.', 'error');
+-        return;
+-      }
+-
+-      // Run Midnight ZK Verification
+-      await onVerifyPrescriptionOnChain(targetRx);
+-
+-      setVerificationResult({
+-        status: 'SUCCESS',
+-        doctorName: doctor.name,
+-        hospitalName: hospital.name,
+-        message: 'Zero-Knowledge Proof Verified On-Chain! Prescription is authentic, active, and valid for fulfillment.',
+-        timestamp: Date.now(),
+-      });
+-      onNotify('Pharmacy Verification Success! ZK Proof Validated.', 'success');
+-
+-    } catch (err: any) {
+-      setVerificationResult({
+-        status: 'FAILED',
+-        message: err.message || 'ZK proof verification failed on Midnight circuit.',
+-        timestamp: Date.now(),
+-      });
+-      onNotify('Pharmacy Verification Failed on Circuit.', 'error');
+-    } finally {
+-      setVerifying(false);
+-    }
+-  };
+-
+-  return (
+-    <div className="pharmacy-portal animate-slide-up">
+-      <div className="section-header">
+-        <div>
+-          <h2>🏥 Pharmacy Verification Portal</h2>
+-          <p className="subtitle">Streamlined zero-knowledge verification workspace for licensed pharmacies</p>
+-        </div>
+-        <div className="pharmacy-badge">
+-           Verified Pharmacy Session
+-        </div>
+-      </div>
+-
+-      <div className="grid-2col">
+-        {/* Scan / Select Section */}
+-        <div className="card glass-card">
+-          <h3>📱 QR Code & Token Scanner</h3>
+-          <p className="text-sm text-muted mb-16">
+-            Paste QR token JSON or select a patient credential for instant ZK verification.
+-          </p>
+-
+-          <div className="form-group">
+-            <label>Scan or Paste ZK Token Payload</label>
+-            <textarea
+-              value={inputToken}
+-              onChange={e => setInputToken(e.target.value)}
+-              placeholder='Paste {"type":"RX_VERIFY_ZK_TOKEN", ...} or scan QR code payload'
+-              className="form-input font-mono text-xs"
+-              rows={4}
+-            />
+-          </div>
+-
+-          <div className="divider-text">OR SELECT ISSUED CREDENTIAL</div>
+-
+-          <div className="form-group">
+-            <label>Select Patient Credential</label>
+-            <select
+-              value={selectedRxId}
+-              onChange={e => setSelectedRxId(e.target.value)}
+-              className="form-input"
+-            >
+-              <option value="">-- Choose from Local Database --</option>
+-              {prescriptions.map(p => (
+-                <option key={p.id} value={p.id}>
+-                  #{p.id} — {p.medicationName} ({p.patientName}) [{p.status}]
+-                </option>
+-              ))}
+-            </select>
+-          </div>
+-
+-          <button
+-            onClick={() => handleVerify()}
+-            disabled={verifying}
+-            className="btn btn-primary btn-block btn-lg mt-16"
+-          >
+-            {verifying ? (
+-              <span className="flex-center gap-8">
+-                <span className="spinner"></span> Running Midnight ZK Circuit...
+-              </span>
+-            ) : (
+-              '⚡ Verify Prescription (Zero-Knowledge)'
+-            )}
+-          </button>
+-        </div>
+-
+-        {/* Verification Result Display Card */}
+-        <div className="card glass-card result-panel">
+-          <h3>🔍 Verification Telemetry Result</h3>
+-
+-          {!verificationResult ? (
+-            <div className="empty-state-box">
+-              <div className="empty-icon">🛡️</div>
+-              <p>Awaiting ZK verification scan.</p>
+-              <span className="text-xs text-muted">No medical data will be exposed during verification.</span>
+-            </div>
+-          ) : (
+-            <div className={`result-card result-${verificationResult.status.toLowerCase()} animate-fade-in`}>
+-              <div className="result-header">
+-                <span className="result-icon">
+-                  {verificationResult.status === 'SUCCESS' && '✅'}
+-                  {verificationResult.status === 'EXPIRED' && '⏰'}
+-                  {verificationResult.status === 'REVOKED' && '🚫'}
+-                  {verificationResult.status === 'FAILED' && '❌'}
+-                </span>
+-                <div>
+-                  <h4 className="result-title">
+-                    {verificationResult.status === 'SUCCESS' && 'PRESCRIPTION VERIFIED & CONFIDENTIAL'}
+-                    {verificationResult.status === 'EXPIRED' && 'PRESCRIPTION EXPIRED'}
+-                    {verificationResult.status === 'REVOKED' && 'PRESCRIPTION REVOKED'}
+-                    {verificationResult.status === 'FAILED' && 'VERIFICATION FAILED'}
+-                  </h4>
+-                  <div className="text-xs opacity-80">
+-                    Timestamp: {new Date(verificationResult.timestamp).toLocaleTimeString()}
+-                  </div>
+-                </div>
+-              </div>
+-
+-              <div className="result-body">
+-                <p className="result-message">{verificationResult.message}</p>
+-
+-                {verificationResult.doctorName && (
+-                  <div className="result-meta mt-12">
+-                    <div><strong>Verified Prescriber:</strong> {verificationResult.doctorName}</div>
+-                    <div><strong>Hospital Network:</strong> {verificationResult.hospitalName}</div>
+-                    <div><strong>Privacy Status:</strong> 🔒 zero medical content disclosed</div>
+-                  </div>
+-                )}
+-              </div>
+-            </div>
+-          )}
+-        </div>
+-      </div>
+-    </div>
+-  );
+-};
+diff --git a/ui/src/components/PrescriptionVerifier.tsx b/ui/src/components/PrescriptionVerifier.tsx
+deleted file mode 100644
+index e65afcf..0000000
+--- a/ui/src/components/PrescriptionVerifier.tsx
++++ /dev/null
+@@ -1,246 +0,0 @@
+-import React, { useState, useEffect } from 'react';
+-import type { WalletState } from '../types';
+-
+-interface PrescriptionVerifierProps {
+-  wallet: WalletState | null;
+-  contractAddress: string;
+-  network: string;
+-  onVerified: () => void;
+-  onError: (msg: string) => void;
+-}
+-
+-type VerifyState = 'idle' | 'hashing' | 'proving' | 'submitting' | 'success' | 'error';
+-
+-async function sha256(text: string): Promise<string> {
+-  const encoder = new TextEncoder();
+-  const data = encoder.encode(text);
+-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+-  const hashArray = Array.from(new Uint8Array(hashBuffer));
+-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+-}
+-
+-export function PrescriptionVerifier({ wallet, contractAddress, network, onVerified, onError }: PrescriptionVerifierProps) {
+-  const [prescription, setPrescription] = useState('');
+-  const [patientSlot, setPatientSlot] = useState('1');
+-  const [state, setState] = useState<VerifyState>('idle');
+-  const [prescriptionHash, setPrescriptionHash] = useState('');
+-  const [lastTxId, setLastTxId] = useState('');
+-  const [errorMsg, setErrorMsg] = useState('');
+-  const [elapsed, setElapsed] = useState(0);
+-
+-  // Auto-hash as user types
+-  useEffect(() => {
+-    const debounce = setTimeout(async () => {
+-      if (prescription.trim()) {
+-        const hash = await sha256(prescription.trim());
+-        setPrescriptionHash(hash);
+-      } else {
+-        setPrescriptionHash('');
+-      }
+-    }, 300);
+-    return () => clearTimeout(debounce);
+-  }, [prescription]);
+-
+-  // Elapsed timer during proving
+-  useEffect(() => {
+-    if (state === 'proving' || state === 'submitting') {
+-      const interval = setInterval(() => setElapsed(e => e + 1), 1000);
+-      return () => clearInterval(interval);
+-    } else {
+-      setElapsed(0);
+-    }
+-  }, [state]);
+-
+-  const verify = async () => {
+-    if (!prescription.trim()) { onError('Please enter prescription details'); return; }
+-    if (!wallet) { onError('Please connect your wallet first'); return; }
+-
+-    setState('hashing');
+-    setErrorMsg('');
+-    setLastTxId('');
+-
+-    try {
+-      // Step 1: hash prescription locally (stays in browser)
+-      await new Promise(r => setTimeout(r, 300));
+-      const hash = await sha256(prescription.trim());
+-      setPrescriptionHash(hash);
+-
+-      // Step 2: prove (simulate ZK proof generation)
+-      setState('proving');
+-      await new Promise(r => setTimeout(r, 2000)); // Simulating proof generation
+-
+-      // Step 3: submit to chain
+-      setState('submitting');
+-
+-      // In production: call the Midnight contract via the proof server
+-      // For local demo: simulate the transaction
+-      const activeContractAddress = contractAddress || '58e1e74340e5a250668f9a9da1597b1bddca694440545796994d9d186db2f36c';
+-      if (!activeContractAddress) {
+-        throw new Error('VITE_CONTRACT_ADDRESS not set. Deploy first and update .env.local');
+-      }
+-
+-      // Simulate network call (in production this calls the proof server)
+-      await new Promise(r => setTimeout(r, 1500));
+-
+-      // Generate a deterministic mock tx ID from the hash
+-      const txId = hash.substring(0, 64);
+-      setLastTxId(txId);
+-      setState('success');
+-      onVerified();
+-      setPrescription('');
+-    } catch (err) {
+-      const msg = err instanceof Error ? err.message : 'Verification failed';
+-      setErrorMsg(msg);
+-      setState('error');
+-      onError(msg);
+-    }
+-  };
+-
+-  const reset = () => { setState('idle'); setErrorMsg(''); setLastTxId(''); };
+-
+-  const disabled = !wallet || state === 'hashing' || state === 'proving' || state === 'submitting';
+-
+-  return (
+-    <div className="card" id="prescription-verifier">
+-      <div className="card-title">
+-        <span className="card-title-icon">🔐</span>
+-        Verify Prescription
+-        <span className="tag tag-green" style={{ marginLeft: 'auto' }}>Private</span>
+-      </div>
+-
+-      {/* Disconnected state */}
+-      {!wallet && (
+-        <div className="alert alert-warning" style={{ marginBottom: '20px' }}>
+-          <span className="alert-icon">⚠️</span>
+-          <div>Connect your wallet to submit a prescription verification.</div>
+-        </div>
+-      )}
+-
+-      {/* Privacy notice */}
+-      <div className="alert alert-info" style={{ marginBottom: '20px', fontSize: '13px' }}>
+-        <span className="alert-icon">🔒</span>
+-        <div>
+-          <strong>Privacy First:</strong> Your prescription details are hashed locally in your browser.
+-          Only a zero-knowledge proof is sent to the blockchain — not your prescription content.
+-        </div>
+-      </div>
+-
+-      {/* Prescription field */}
+-      <div className="form-group" style={{ marginBottom: '16px' }}>
+-        <label className="form-label" htmlFor="prescription-input">
+-          Prescription Details
+-          <span className="privacy-badge">🔒 Private</span>
+-        </label>
+-        <textarea
+-          id="prescription-input"
+-          className="private-field"
+-          placeholder="Enter prescription details (e.g., Amoxicillin 500mg twice daily — Dr. Smith)&#10;&#10;This stays on your device. Never sent to the blockchain."
+-          value={prescription}
+-          onChange={e => setPrescription(e.target.value)}
+-          disabled={disabled}
+-          rows={4}
+-        />
+-        {prescriptionHash && (
+-          <div>
+-            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px', marginBottom: '4px' }}>
+-              SHA-256 hash (only this goes on-chain):
+-            </div>
+-            <div className="hash-display" id="prescription-hash-display">
+-              {prescriptionHash.substring(0, 32)}...
+-            </div>
+-          </div>
+-        )}
+-      </div>
+-
+-      {/* Patient slot */}
+-      <div className="form-group" style={{ marginBottom: '24px' }}>
+-        <label className="form-label" htmlFor="patient-slot-input">
+-          Patient Slot ID
+-          <span className="tag tag-blue" style={{ marginLeft: '4px', fontSize: '11px' }}>Public Session Metadata</span>
+-        </label>
+-        <input
+-          type="number"
+-          id="patient-slot-input"
+-          value={patientSlot}
+-          onChange={e => setPatientSlot(e.target.value)}
+-          min={1}
+-          max={9999}
+-          placeholder="1-9999"
+-          disabled={disabled}
+-        />
+-        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+-          A non-sensitive session identifier. This is the only value disclosed on-chain.
+-        </div>
+-      </div>
+-
+-      {/* Action Button */}
+-      {state !== 'success' && (
+-        <button
+-          id="verify-btn"
+-          className="btn btn-success btn-lg w-full"
+-          onClick={verify}
+-          disabled={disabled || !prescription.trim()}
+-        >
+-          {state === 'idle' && <><span>🔐</span> Verify Prescription (ZK Proof)</>}
+-          {state === 'hashing' && <><span className="spinner" style={{ borderTopColor: 'white' }} /> Computing Hash...</>}
+-          {state === 'proving' && <><span className="spinner" style={{ borderTopColor: 'white' }} /> Generating ZK Proof ({elapsed}s)...</>}
+-          {state === 'submitting' && <><span className="spinner" style={{ borderTopColor: 'white' }} /> Submitting to Chain...</>}
+-          {state === 'error' && <><span>⚠️</span> Retry Verification</>}
+-        </button>
+-      )}
+-
+-      {/* Progress indicator */}
+-      {(state === 'proving' || state === 'submitting') && (
+-        <div style={{ marginTop: '16px' }}>
+-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+-            <span>{state === 'proving' ? 'Generating zero-knowledge proof...' : 'Submitting transaction...'}</span>
+-            <span>{elapsed}s</span>
+-          </div>
+-          <div style={{ height: '4px', background: 'var(--bg-input)', borderRadius: '2px', overflow: 'hidden' }}>
+-            <div style={{
+-              height: '100%', borderRadius: '2px',
+-              background: 'var(--gradient-accent)',
+-              width: state === 'proving' ? '60%' : '90%',
+-              transition: 'width 2s ease',
+-            }} />
+-          </div>
+-        </div>
+-      )}
+-
+-      {/* Success state */}
+-      {state === 'success' && (
+-        <div className="animate-fade-in">
+-          <div className="alert alert-success" style={{ marginBottom: '16px' }}>
+-            <span className="alert-icon">✅</span>
+-            <div>
+-              <strong>Prescription Verified!</strong>
+-              <br />Your ZK proof was accepted on-chain. No prescription content was revealed.
+-            </div>
+-          </div>
+-          {lastTxId && (
+-            <div className="hash-display" id="tx-id-display">
+-              <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>TX ID: </span>
+-              {lastTxId.substring(0, 32)}...
+-            </div>
+-          )}
+-          <button
+-            id="verify-again-btn"
+-            className="btn btn-outline w-full"
+-            onClick={reset}
+-            style={{ marginTop: '16px' }}
+-          >
+-            Verify Another Prescription
+-          </button>
+-        </div>
+-      )}
+-
+-      {/* Error state */}
+-      {state === 'error' && errorMsg && (
+-        <div className="alert alert-error" style={{ marginTop: '16px' }}>
+-          <span className="alert-icon">❌</span>
+-          <div>{errorMsg}</div>
+-        </div>
+-      )}
+-    </div>
+-  );
+-}
+\ No newline at end of file
+diff --git a/ui/src/components/PrescriptionViewModal.tsx b/ui/src/components/PrescriptionViewModal.tsx
+deleted file mode 100644
+index ff931aa..0000000
+--- a/ui/src/components/PrescriptionViewModal.tsx
++++ /dev/null
+@@ -1,148 +0,0 @@
+-import React, { useState } from 'react';
+-import type { Prescription } from '../../../src/healthcare-services';
+-import { formatExpiryBadge, encodeQRPayload } from '../../../src/healthcare-services';
+-
+-interface PrescriptionViewModalProps {
+-  prescription: Prescription;
+-  onClose: () => void;
+-  onShowQR: (qrData: string, title: string) => void;
+-  onNotify: (msg: string, type: 'success' | 'error' | 'info') => void;
+-}
+-
+-export const PrescriptionViewModal: React.FC<PrescriptionViewModalProps> = ({
+-  prescription,
+-  onClose,
+-  onShowQR,
+-  onNotify,
+-}) => {
+-  const [copiedId, setCopiedId] = useState(false);
+-  const badge = formatExpiryBadge(prescription.expiryDate, prescription.status === 'Revoked');
+-
+-  const handleCopyId = () => {
+-    navigator.clipboard.writeText(prescription.id);
+-    setCopiedId(true);
+-    onNotify(`Prescription ID ${prescription.id} copied!`, 'success');
+-    setTimeout(() => setCopiedId(false), 3000);
+-  };
+-
+-  const handleDownloadProof = () => {
+-    const proofData = {
+-      prescriptionId: prescription.id,
+-      patientSlotId: prescription.patientId,
+-      doctorName: prescription.doctorName,
+-      doctorLicense: prescription.doctorLicense,
+-      hospitalName: prescription.hospitalName,
+-      prescriptionHash: prescription.prescriptionHash,
+-      doctorSignature: prescription.doctorSignature,
+-      issueDate: prescription.issueDate,
+-      expiryDate: prescription.expiryDate,
+-      status: prescription.status,
+-      protocol: 'Midnight Network Zero-Knowledge Proof System (Compact v0.31)',
+-      downloadedAt: new Date().toISOString(),
+-    };
+-
+-    const blob = new Blob([JSON.stringify(proofData, null, 2)], { type: 'application/json' });
+-    const url = URL.createObjectURL(blob);
+-    const a = document.createElement('a');
+-    a.href = url;
+-    a.download = `zk-proof-${prescription.id}.json`;
+-    document.body.appendChild(a);
+-    a.click();
+-    document.body.removeChild(a);
+-    URL.revokeObjectURL(url);
+-
+-    onNotify(`Downloaded ZK verification proof JSON for #${prescription.id}`, 'success');
+-  };
+-
+-  return (
+-    <div className="modal-backdrop animate-fade-in" onClick={onClose}>
+-      <div className="modal-content glass-card animate-scale-up rx-detail-modal" onClick={e => e.stopPropagation()}>
+-        <div className="modal-header">
+-          <div className="flex-center gap-12">
+-            <span className="modal-icon">💊</span>
+-            <div>
+-              <h3>Confidential Prescription Details</h3>
+-              <div className="font-mono text-xs text-muted">ID: {prescription.id}</div>
+-            </div>
+-          </div>
+-          <button className="close-btn" onClick={onClose}>×</button>
+-        </div>
+-
+-        <div className="modal-body">
+-          {/* Verification Badges */}
+-          <div className="verification-badges-row mb-16">
+-            <span className="v-badge v-badge-emerald">✅ Confidential</span>
+-            <span className="v-badge v-badge-purple">✅ Signed</span>
+-            <span className="v-badge v-badge-cyan">✅ Zero-Knowledge Protected</span>
+-          </div>
+-
+-          <div className="status-banner mb-16">
+-            <span className="text-sm font-bold">Credential Status:</span>
+-            <span className={`badge ${badge.badgeClass}`}>{badge.label}</span>
+-          </div>
+-
+-          <div className="detail-sections-grid">
+-            <div className="detail-box">
+-              <div className="detail-box-title font-bold">👨‍⚕️ Prescriber & Hospital</div>
+-              <div className="detail-item"><strong>Doctor:</strong> {prescription.doctorName}</div>
+-              <div className="detail-item"><strong>License:</strong> {prescription.doctorLicense}</div>
+-              <div className="detail-item"><strong>Hospital:</strong> {prescription.hospitalName}</div>
+-              <div className="detail-item">
+-                <strong>Digital Signature:</strong>{' '}
+-                <span className="text-success font-bold">✓ Verified (64-byte Ed25519)</span>
+-              </div>
+-            </div>
+-
+-            <div className="detail-box">
+-              <div className="detail-box-title font-bold">💊 Medication & Session Metadata</div>
+-              <div className="detail-item"><strong>Patient Slot ID:</strong> Slot #{prescription.patientId}</div>
+-              <div className="detail-item"><strong>Medication:</strong> {prescription.medicationName}</div>
+-              <div className="detail-item"><strong>Dosage:</strong> {prescription.dosage}</div>
+-              <div className="detail-item"><strong>Instructions:</strong> {prescription.instructions || 'None'}</div>
+-            </div>
+-          </div>
+-
+-          <div className="detail-box mt-12">
+-            <div className="detail-box-title font-bold">🗓️ Validity Dates & SHA-256 Hash</div>
+-            <div className="detail-item"><strong>Issue Date:</strong> {prescription.issueDate}</div>
+-            <div className="detail-item"><strong>Expiry Date:</strong> {prescription.expiryDate}</div>
+-            <div className="detail-item font-mono text-xs truncate mt-4">
+-              <strong>Hash Digest:</strong> {prescription.prescriptionHash}
+-            </div>
+-          </div>
+-
+-          {/* Privacy Protection Notice */}
+-          <div className="privacy-notice-box mt-16">
+-            <span className="privacy-icon">🔒</span>
+-            <div>
+-              <strong>Midnight Protocol Privacy Protection:</strong>
+-              <p className="text-xs text-muted">
+-                This confidential prescription is secured by Midnight Network zero-knowledge cryptography.
+-                Medication details and diagnostic notes remain strictly private on your device.
+-              </p>
+-            </div>
+-          </div>
+-
+-          {/* Action Buttons */}
+-          <div className="modal-actions mt-20">
+-            <button onClick={handleDownloadProof} className="btn btn-primary flex-1">
+-              📥 Download Proof JSON
+-            </button>
+-            <button
+-              onClick={() => {
+-                const payload = encodeQRPayload(prescription);
+-                onShowQR(payload, `Prescription #${prescription.id} QR Code`);
+-              }}
+-              className="btn btn-secondary flex-1"
+-            >
+-              📱 Generate QR Code
+-            </button>
+-            <button onClick={handleCopyId} className="btn btn-outline">
+-              {copiedId ? '✓ Copied!' : '📋 Copy ID'}
+-            </button>
+-          </div>
+-        </div>
+-      </div>
+-    </div>
+-  );
+-};
+diff --git a/ui/src/components/PrivacyModel.tsx b/ui/src/components/PrivacyModel.tsx
+deleted file mode 100644
+index 915479a..0000000
+--- a/ui/src/components/PrivacyModel.tsx
++++ /dev/null
+@@ -1,62 +0,0 @@
+-import React from 'react';
+-
+-export function PrivacyModel() {
+-  return (
+-    <section className="section animate-slide-up" style={{ marginTop: '8px' }}>
+-      <div className="privacy-section">
+-        <div className="privacy-title">
+-          <span>🔒</span> Privacy Model
+-        </div>
+-
+-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+-          <div>
+-            <div style={{ fontSize: '13px', fontWeight: 600, color: '#fc8181', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+-              <span>👁️</span> What observers CAN see
+-            </div>
+-            <div className="privacy-row">
+-              <span className="privacy-row-label">Verification count</span>
+-              <span className="privacy-row-value public">Public</span>
+-            </div>
+-            <div className="privacy-row">
+-              <span className="privacy-row-label">Contract status</span>
+-              <span className="privacy-row-value public">Public</span>
+-            </div>
+-            <div className="privacy-row">
+-              <span className="privacy-row-label">Patient slot ID</span>
+-              <span className="privacy-row-value public">Disclosed</span>
+-            </div>
+-          </div>
+-
+-          <div>
+-            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--accent-teal)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+-              <span>🔒</span> What observers CANNOT see
+-            </div>
+-            <div className="privacy-row">
+-              <span className="privacy-row-label">Prescription content</span>
+-              <span className="privacy-row-value private">Private</span>
+-            </div>
+-            <div className="privacy-row">
+-              <span className="privacy-row-label">Prescription hash</span>
+-              <span className="privacy-row-value private">Private</span>
+-            </div>
+-            <div className="privacy-row">
+-              <span className="privacy-row-label">Doctor signature</span>
+-              <span className="privacy-row-value private">Private</span>
+-            </div>
+-            <div className="privacy-row">
+-              <span className="privacy-row-label">Patient identity</span>
+-              <span className="privacy-row-value private">Private</span>
+-            </div>
+-          </div>
+-        </div>
+-
+-        <div style={{ marginTop: '20px', padding: '16px', background: 'rgba(52, 211, 153, 0.05)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(52, 211, 153, 0.1)', fontSize: '13px', color: 'var(--text-secondary)' }}>
+-          <strong style={{ color: 'var(--accent-teal)' }}>How it works: </strong>
+-          Your prescription is hashed with SHA-256 locally in your browser. A Compact ZK circuit proves
+-          the hash is non-zero (prescription exists) and the doctor signature is valid, without revealing
+-          either value. Only the <code>verificationCount</code> is updated on the public ledger.
+-        </div>
+-      </div>
+-    </section>
+-  );
+-}
+\ No newline at end of file
+diff --git a/ui/src/components/QRCodeModal.tsx b/ui/src/components/QRCodeModal.tsx
+deleted file mode 100644
+index ebcc606..0000000
+--- a/ui/src/components/QRCodeModal.tsx
++++ /dev/null
+@@ -1,124 +0,0 @@
+-import React, { useState } from 'react';
+-
+-interface QRCodeModalProps {
+-  qrData: string;
+-  title: string;
+-  onClose: () => void;
+-  onNotify: (msg: string, type: 'success' | 'error' | 'info') => void;
+-}
+-
+-export const QRCodeModal: React.FC<QRCodeModalProps> = ({
+-  qrData,
+-  title,
+-  onClose,
+-  onNotify,
+-}) => {
+-  const [copied, setCopied] = useState(false);
+-
+-  const handleCopy = () => {
+-    navigator.clipboard.writeText(qrData);
+-    setCopied(true);
+-    onNotify('ZK token copied to clipboard!', 'success');
+-    setTimeout(() => setCopied(false), 3000);
+-  };
+-
+-  return (
+-    <div className="modal-backdrop animate-fade-in" onClick={onClose}>
+-      <div className="modal-content glass-card animate-scale-up" onClick={e => e.stopPropagation()}>
+-        <div className="modal-header">
+-          <h3>📱 {title}</h3>
+-          <button className="close-btn" onClick={onClose}>×</button>
+-        </div>
+-
+-        <div className="modal-body align-center">
+-          <div className="qr-container">
+-            {/* Visual Stylized QR Matrix */}
+-            <div className="qr-matrix-box">
+-              <svg viewBox="0 0 200 200" className="qr-svg">
+-                <rect width="200" height="200" fill="#ffffff" rx="12" />
+-                {/* Corner Positioning Squares */}
+-                <rect x="20" y="20" width="40" height="40" fill="#0f172a" />
+-                <rect x="26" y="26" width="28" height="28" fill="#ffffff" />
+-                <rect x="32" y="32" width="16" height="16" fill="#0f172a" />
+-
+-                <rect x="140" y="20" width="40" height="40" fill="#0f172a" />
+-                <rect x="146" y="26" width="28" height="28" fill="#ffffff" />
+-                <rect x="152" y="32" width="16" height="16" fill="#0f172a" />
+-
+-                <rect x="20" y="140" width="40" height="40" fill="#0f172a" />
+-                <rect x="26" y="146" width="28" height="28" fill="#ffffff" />
+-                <rect x="32" y="152" width="16" height="16" fill="#0f172a" />
+-
+-                {/* Decorative Data Blocks representing ZK Proof token */}
+-                <rect x="75" y="25" width="12" height="12" fill="#0284c7" />
+-                <rect x="95" y="25" width="12" height="12" fill="#0f172a" />
+-                <rect x="115" y="25" width="12" height="12" fill="#0284c7" />
+-
+-                <rect x="75" y="45" width="12" height="12" fill="#0f172a" />
+-                <rect x="95" y="45" width="12" height="12" fill="#6366f1" />
+-                <rect x="115" y="45" width="12" height="12" fill="#0f172a" />
+-
+-                <rect x="25" y="75" width="12" height="12" fill="#0284c7" />
+-                <rect x="45" y="75" width="12" height="12" fill="#0f172a" />
+-                <rect x="65" y="75" width="12" height="12" fill="#10b981" />
+-                <rect x="85" y="75" width="12" height="12" fill="#0f172a" />
+-                <rect x="105" y="75" width="12" height="12" fill="#6366f1" />
+-                <rect x="125" y="75" width="12" height="12" fill="#0f172a" />
+-                <rect x="145" y="75" width="12" height="12" fill="#0284c7" />
+-                <rect x="165" y="75" width="12" height="12" fill="#0f172a" />
+-
+-                <rect x="25" y="95" width="12" height="12" fill="#0f172a" />
+-                <rect x="45" y="95" width="12" height="12" fill="#6366f1" />
+-                <rect x="65" y="95" width="12" height="12" fill="#0f172a" />
+-                <rect x="85" y="95" width="12" height="12" fill="#10b981" />
+-                <rect x="105" y="95" width="12" height="12" fill="#0f172a" />
+-                <rect x="125" y="95" width="12" height="12" fill="#6366f1" />
+-                <rect x="145" y="95" width="12" height="12" fill="#0f172a" />
+-                <rect x="165" y="95" width="12" height="12" fill="#0284c7" />
+-
+-                <rect x="25" y="115" width="12" height="12" fill="#0284c7" />
+-                <rect x="45" y="115" width="12" height="12" fill="#0f172a" />
+-                <rect x="65" y="115" width="12" height="12" fill="#10b981" />
+-                <rect x="85" y="115" width="12" height="12" fill="#0f172a" />
+-                <rect x="105" y="115" width="12" height="12" fill="#0f172a" />
+-                <rect x="125" y="115" width="12" height="12" fill="#6366f1" />
+-                <rect x="145" y="115" width="12" height="12" fill="#0f172a" />
+-                <rect x="165" y="115" width="12" height="12" fill="#10b981" />
+-
+-                <rect x="75" y="145" width="12" height="12" fill="#0f172a" />
+-                <rect x="95" y="145" width="12" height="12" fill="#0284c7" />
+-                <rect x="115" y="145" width="12" height="12" fill="#0f172a" />
+-                <rect x="135" y="145" width="12" height="12" fill="#10b981" />
+-
+-                <rect x="75" y="165" width="12" height="12" fill="#10b981" />
+-                <rect x="95" y="165" width="12" height="12" fill="#0f172a" />
+-                <rect x="115" y="165" width="12" height="12" fill="#6366f1" />
+-                <rect x="135" y="165" width="12" height="12" fill="#0284c7" />
+-                <rect x="155" y="165" width="12" height="12" fill="#0f172a" />
+-              </svg>
+-            </div>
+-            <span className="text-xs text-muted mt-8">Scan with Pharmacy Portal Camera / Token Reader</span>
+-          </div>
+-
+-          <div className="token-preview-box font-mono text-xs">
+-            <textarea
+-              readOnly
+-              value={qrData}
+-              rows={3}
+-              className="form-input text-xs font-mono"
+-            />
+-          </div>
+-
+-          <div className="modal-actions">
+-            <button onClick={handleCopy} className="btn btn-primary flex-1">
+-              {copied ? '✓ Token Copied!' : '📋 Copy ZK Payload Token'}
+-            </button>
+-            <button onClick={onClose} className="btn btn-secondary">
+-              Close
+-            </button>
+-          </div>
+-        </div>
+-      </div>
+-    </div>
+-  );
+-};
+diff --git a/ui/src/components/Toast.tsx b/ui/src/components/Toast.tsx
+deleted file mode 100644
+index 879cb92..0000000
+--- a/ui/src/components/Toast.tsx
++++ /dev/null
+@@ -1,20 +0,0 @@
+-import React from 'react';
+-import type { Toast } from '../types';
+-
+-interface ToastContainerProps {
+-  toasts: Toast[];
+-}
+-
+-export function ToastContainer({ toasts }: ToastContainerProps) {
+-  if (toasts.length === 0) return null;
+-  return (
+-    <div className="toast-container">
+-      {toasts.map(t => (
+-        <div key={t.id} className={`toast toast-${t.type}`}>
+-          <span>{t.type === 'success' ? '✅' : '❌'}</span>
+-          {t.message}
+-        </div>
+-      ))}
+-    </div>
+-  );
+-}
+\ No newline at end of file
+diff --git a/ui/src/components/VerificationHistory.tsx b/ui/src/components/VerificationHistory.tsx
+deleted file mode 100644
+index 0075a7f..0000000
+--- a/ui/src/components/VerificationHistory.tsx
++++ /dev/null
+@@ -1,84 +0,0 @@
+-import React from 'react';
+-import type { VerificationLog } from '../../../src/healthcare-services';
+-
+-interface VerificationHistoryProps {
+-  logs: VerificationLog[];
+-  onClearLogs?: () => void;
+-}
+-
+-export const VerificationHistory: React.FC<VerificationHistoryProps> = ({ logs, onClearLogs }) => {
+-  return (
+-    <div className="verification-history animate-slide-up">
+-      <div className="section-header">
+-        <div>
+-          <h2>📜 Confidential Verification History Log</h2>
+-          <p className="subtitle">Audit trail of zero-knowledge proof evaluations, credential issuances, and revocations</p>
+-        </div>
+-        {logs.length > 0 && onClearLogs && (
+-          <button onClick={onClearLogs} className="btn btn-outline btn-sm">
+-            Clear Audit Log
+-          </button>
+-        )}
+-      </div>
+-
+-      <div className="card glass-card">
+-        {logs.length === 0 ? (
+-          <div className="empty-state-box">
+-            <div className="empty-icon">📜</div>
+-            <p>No verification activity recorded yet.</p>
+-            <span className="text-xs text-muted">Issuing or verifying a prescription will generate zero-knowledge audit events here.</span>
+-          </div>
+-        ) : (
+-          <div className="table-responsive">
+-            <table className="modern-table">
+-              <thead>
+-                <tr>
+-                  <th>Timestamp</th>
+-                  <th>Action Event</th>
+-                  <th>Prescription ID</th>
+-                  <th>Role</th>
+-                  <th>ZK Status</th>
+-                  <th>Audit Details</th>
+-                </tr>
+-              </thead>
+-              <tbody>
+-                {logs.map(log => (
+-                  <tr key={log.id}>
+-                    <td className="font-mono text-xs text-muted">
+-                      {new Date(log.timestamp).toLocaleString()}
+-                    </td>
+-                    <td>
+-                      <span className={`badge ${
+-                        log.type === 'Verified' ? 'badge-success' :
+-                        log.type === 'Issued' ? 'badge-primary' :
+-                        log.type === 'Revoked' ? 'badge-danger' : 'badge-warning'
+-                      }`}>
+-                        {log.type}
+-                      </span>
+-                    </td>
+-                    <td className="font-mono font-bold text-xs">{log.prescriptionId}</td>
+-                    <td>
+-                      <span className="role-tag">{log.verifierRole}</span>
+-                    </td>
+-                    <td>
+-                      <span className={`zk-status-pill ${
+-                        log.zkStatus === 'Proof Valid' ? 'zk-valid' :
+-                        log.zkStatus === 'Revoked' ? 'zk-revoked' : 'zk-failed'
+-                      }`}>
+-                        {log.zkStatus === 'Proof Valid' && '🔒 Proof Valid'}
+-                        {log.zkStatus === 'Proof Failed' && '❌ Proof Failed'}
+-                        {log.zkStatus === 'Revoked' && '🚫 Revoked'}
+-                        {log.zkStatus === 'Token Expired' && '⏰ Expired'}
+-                      </span>
+-                    </td>
+-                    <td className="text-sm">{log.details}</td>
+-                  </tr>
+-                ))}
+-              </tbody>
+-            </table>
+-          </div>
+-        )}
+-      </div>
+-    </div>
+-  );
+-};
+diff --git a/ui/src/components/WalletConnect.tsx b/ui/src/components/WalletConnect.tsx
+deleted file mode 100644
+index c771aba..0000000
+--- a/ui/src/components/WalletConnect.tsx
++++ /dev/null
+@@ -1,209 +0,0 @@
+-import React, { useState, useEffect, useCallback } from 'react';
+-import type { WalletState } from '../types';
+-import { requestLaceConnection, getLaceWalletProvider } from '../wallet-service';
+-
+-interface WalletConnectProps {
+-  wallet: WalletState | null;
+-  onConnect: (wallet: WalletState) => void;
+-  onDisconnect: () => void;
+-  onError: (msg: string) => void;
+-}
+-
+-export function WalletConnect({ wallet, onConnect, onDisconnect, onError }: WalletConnectProps) {
+-  const [isConnecting, setIsConnecting] = useState(false);
+-  const [connectSeconds, setConnectSeconds] = useState(0);
+-  const [isLaceInstalled, setIsLaceInstalled] = useState<boolean | null>(null);
+-
+-  const checkLace = useCallback(() => {
+-    const provider = getLaceWalletProvider();
+-    const installed = Boolean(provider);
+-    setIsLaceInstalled(installed);
+-    return installed;
+-  }, []);
+-
+-  useEffect(() => {
+-    checkLace();
+-    const interval = setInterval(checkLace, 2000);
+-    return () => clearInterval(interval);
+-  }, [checkLace]);
+-
+-  // Connecting timer to show helpful tips if extension popup is delayed
+-  useEffect(() => {
+-    let timer: any;
+-    if (isConnecting) {
+-      setConnectSeconds(0);
+-      timer = setInterval(() => setConnectSeconds(s => s + 1), 1000);
+-    } else {
+-      setConnectSeconds(0);
+-    }
+-    return () => clearInterval(timer);
+-  }, [isConnecting]);
+-
+-  const connect = useCallback(async () => {
+-    setIsConnecting(true);
+-    try {
+-      const connectedWallet = await requestLaceConnection(12000);
+-      localStorage.setItem('midnight_wallet_connected', 'true');
+-      onConnect(connectedWallet);
+-    } catch (err) {
+-      const msg = err instanceof Error ? err.message : 'Failed to connect Lace wallet';
+-      onError(msg);
+-    } finally {
+-      setIsConnecting(false);
+-    }
+-  }, [onConnect, onError]);
+-
+-  const disconnect = useCallback(() => {
+-    localStorage.removeItem('midnight_wallet_connected');
+-    onDisconnect();
+-  }, [onDisconnect]);
+-
+-  // Auto-reconnect if session exists
+-  useEffect(() => {
+-    const wasConnected = localStorage.getItem('midnight_wallet_connected') === 'true';
+-    if (wasConnected && !wallet && isLaceInstalled) {
+-      connect().catch(() => localStorage.removeItem('midnight_wallet_connected'));
+-    }
+-  }, [wallet, isLaceInstalled, connect]);
+-
+-  const connectDevnetFallback = () => {
+-    setIsConnecting(false);
+-    const devnetWallet: WalletState = {
+-      address: 'mn_addr_undeployed1h3ssm5ru2t6eqy4g3she78zlxn96e36ms6pq996aduvmateh9p9sk96u7s',
+-      coinPublicKey: '0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+-      network: import.meta.env.VITE_NETWORK || 'undeployed',
+-      isConnected: true,
+-    };
+-    onConnect(devnetWallet);
+-  };
+-
+-  if (!wallet) {
+-    return (
+-      <div className="card animate-slide-up">
+-        <div className="card-title">
+-          <span className="card-title-icon">👛</span>
+-          Connect Lace Wallet
+-        </div>
+-
+-        {isLaceInstalled === false ? (
+-          <div className="alert alert-warning mb-4" style={{ marginBottom: '20px' }}>
+-            <span className="alert-icon">⚠️</span>
+-            <div>
+-              <strong>Lace Extension Not Detected</strong>
+-              <br />
+-              <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px', display: 'block' }}>
+-                Please install the <strong>Midnight Lace Wallet Extension</strong> to interact with the Midnight Network.
+-              </span>
+-            </div>
+-          </div>
+-        ) : (
+-          <div className="alert alert-info mb-4" style={{ marginBottom: '20px' }}>
+-            <span className="alert-icon">ℹ️</span>
+-            <div>
+-              Connect your authentic <strong>Lace wallet</strong> to issue or verify confidential prescriptions.
+-              Your private keys and health data never leave your device.
+-            </div>
+-          </div>
+-        )}
+-
+-        {isConnecting && connectSeconds >= 2 && (
+-          <div className="alert alert-warning mb-4" style={{ marginBottom: '16px', fontSize: '13px' }}>
+-            <span className="alert-icon">💡</span>
+-            <div>
+-              <strong>Action Required in Browser Toolbar:</strong>
+-              <br />
+-              If Chrome blocked the auto-popup, please click the <strong>Lace Wallet extension icon</strong> in your browser's extensions bar (puzzle icon) to approve the connection.
+-            </div>
+-          </div>
+-        )}
+-
+-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+-          <button
+-            id="wallet-connect-btn"
+-            className="btn btn-primary btn-lg w-full"
+-            onClick={connect}
+-            disabled={isConnecting}
+-          >
+-            {isConnecting ? (
+-              <><span className="spinner" style={{ borderTopColor: 'white' }} /> Awaiting Approval ({connectSeconds}s)...</>
+-            ) : (
+-              <><span>💊</span> Connect Lace Wallet</>
+-            )}
+-          </button>
+-
+-          <div style={{ display: 'grid', gridTemplateColumns: isConnecting ? '1fr 1fr' : '1fr 1fr', gap: '10px', marginTop: '4px' }}>
+-            {isConnecting ? (
+-              <button
+-                className="btn btn-danger btn-sm"
+-                onClick={() => setIsConnecting(false)}
+-              >
+-                ✕ Cancel Request
+-              </button>
+-            ) : (
+-              <button
+-                className="btn btn-outline btn-sm"
+-                onClick={() => {
+-                  const found = checkLace();
+-                  if (found) connect();
+-                  else onError('Lace extension not detected on window object yet. Check Chrome extension permissions.');
+-                }}
+-              >
+-                🔄 Re-scan Extension
+-              </button>
+-            )}
+-
+-            <button
+-              className="btn btn-secondary btn-sm"
+-              onClick={connectDevnetFallback}
+-            >
+-              🧪 Devnet Wallet
+-            </button>
+-          </div>
+-        </div>
+-
+-        <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '13px', color: 'var(--text-muted)' }}>
+-          <a
+-            href="https://www.lace.io/"
+-            target="_blank"
+-            rel="noopener noreferrer"
+-            style={{ color: 'var(--accent-blue)', textDecoration: 'none', fontWeight: 500 }}
+-          >
+-            Download Midnight Lace Wallet Extension →
+-          </a>
+-        </div>
+-      </div>
+-    );
+-  }
+-
+-  return (
+-    <div className="card animate-fade-in">
+-      <div className="card-title">
+-        <span className="card-title-icon">✅</span>
+-        Wallet Connected
+-      </div>
+-
+-      <div className="wallet-section">
+-        <div>
+-          <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Connected Address</div>
+-          <div className="wallet-addr" id="wallet-address-display">{wallet.address}</div>
+-        </div>
+-
+-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'var(--bg-input)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+-          <div>
+-            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Network</div>
+-            <div style={{ fontWeight: 600, color: 'var(--accent-teal)' }}>{wallet.network}</div>
+-          </div>
+-          <div className="tag tag-green">Connected</div>
+-        </div>
+-
+-        <button
+-          id="wallet-disconnect-btn-card"
+-          className="btn btn-danger w-full"
+-          onClick={disconnect}
+-        >
+-          Disconnect Wallet
+-        </button>
+-      </div>
+-    </div>
+-  );
+-}
+\ No newline at end of file
+diff --git a/ui/src/main.tsx b/ui/src/main.tsx
+deleted file mode 100644
+index 71ef58b..0000000
+--- a/ui/src/main.tsx
++++ /dev/null
+@@ -1,10 +0,0 @@
+-import React from 'react';
+-import ReactDOM from 'react-dom/client';
+-import App from './App.tsx';
+-import './index.css';
+-
+-ReactDOM.createRoot(document.getElementById('root')!).render(
+-  <React.StrictMode>
+-    <App />
+-  </React.StrictMode>,
+-);
+\ No newline at end of file
+diff --git a/ui/src/wallet-service.ts b/ui/src/wallet-service.ts
+deleted file mode 100644
+index 0aad63b..0000000
+--- a/ui/src/wallet-service.ts
++++ /dev/null
+@@ -1,176 +0,0 @@
+-import type { WalletState } from './types';
+-import type { DAppConnectorAPI, DAppConnectorWalletAPI } from '@midnight-ntwrk/dapp-connector-api';
+-
+-export function getLaceWalletProvider(): DAppConnectorAPI | null {
+-  if (typeof window === 'undefined') return null;
+-  const win = window as any;
+-
+-  // 1. Official Midnight Lace Extension (window.midnight)
+-  if (win.midnight) {
+-    if (win.midnight.mnLace) return win.midnight.mnLace as DAppConnectorAPI;
+-    if (win.midnight.lace) return win.midnight.lace as DAppConnectorAPI;
+-    for (const key of Object.keys(win.midnight)) {
+-      if (win.midnight[key] && typeof win.midnight[key].enable === 'function') {
+-        return win.midnight[key] as DAppConnectorAPI;
+-      }
+-    }
+-  }
+-
+-  // 2. Cardano Lace Extension (window.cardano)
+-  if (win.cardano) {
+-    if (win.cardano.mnLace) return win.cardano.mnLace as DAppConnectorAPI;
+-    if (win.cardano.lace) return win.cardano.lace as DAppConnectorAPI;
+-    if (typeof win.cardano.enable === 'function') return win.cardano as DAppConnectorAPI;
+-    for (const key of Object.keys(win.cardano)) {
+-      if (win.cardano[key] && typeof win.cardano[key].enable === 'function') {
+-        return win.cardano[key] as DAppConnectorAPI;
+-      }
+-    }
+-  }
+-
+-  // 3. Root Window Objects
+-  if (win.mnLace && typeof win.mnLace.enable === 'function') return win.mnLace as DAppConnectorAPI;
+-  if (win.lace && typeof win.lace.enable === 'function') return win.lace as DAppConnectorAPI;
+-
+-  // 4. Global Property Search
+-  try {
+-    const keys = Object.getOwnPropertyNames(win);
+-    for (const prop of keys) {
+-      const lower = prop.toLowerCase();
+-      if (lower.includes('lace') || lower.includes('midnight') || lower.includes('cardano')) {
+-        const obj = win[prop];
+-        if (obj && typeof obj.enable === 'function') {
+-          return obj as DAppConnectorAPI;
+-        }
+-      }
+-    }
+-  } catch (e) {}
+-
+-  return null;
+-}
+-
+-export async function requestLaceConnection(timeoutMs: number = 12000): Promise<WalletState> {
+-  let provider = getLaceWalletProvider();
+-
+-  // Polling wait for asynchronously injected content scripts
+-  if (!provider && typeof window !== 'undefined') {
+-    for (let i = 0; i < 5; i++) {
+-      await new Promise(r => setTimeout(r, 200));
+-      provider = getLaceWalletProvider();
+-      if (provider) break;
+-    }
+-  }
+-
+-  if (!provider) {
+-    throw new Error(
+-      'Midnight Lace Wallet extension was not detected on this browser tab. Please install the Midnight Lace Wallet extension and refresh.'
+-    );
+-  }
+-
+-  // Midnight DApp Connector Service URI configuration — Preview Testnet
+-  const serviceUriConfig = {
+-    indexer: import.meta.env.VITE_INDEXER_URL || 'https://indexer.preview.midnight.network/api/v4/graphql',
+-    indexerWS: import.meta.env.VITE_INDEXER_WS_URL || 'wss://indexer.preview.midnight.network/api/v4/graphql/ws',
+-    node: import.meta.env.VITE_NODE_URL || 'https://rpc.preview.midnight.network',
+-    proofServer: import.meta.env.VITE_PROOF_SERVER_URL || 'https://proof-server.preview.midnight.network',
+-  };
+-
+-  // Helper for timeout
+-  const timeoutPromise = new Promise<never>((_, reject) => {
+-    setTimeout(() => {
+-      reject(
+-        new Error(
+-          'Lace Wallet connection timed out. If a popup window did not automatically open, please click the Lace Wallet extension icon in your Chrome toolbar to manually approve the pending request.'
+-        )
+-      );
+-    }, timeoutMs);
+-  });
+-
+-  // Trigger authentic Lace wallet permission request with timeout race
+-  let enabledApi: DAppConnectorWalletAPI | any;
+-  try {
+-    const enableCall = (async () => {
+-      try {
+-        return await provider.enable(serviceUriConfig);
+-      } catch {
+-        return await provider.enable();
+-      }
+-    })();
+-
+-    enabledApi = await Promise.race([enableCall, timeoutPromise]);
+-  } catch (err) {
+-    throw new Error(
+-      err instanceof Error ? err.message : 'Wallet connection request was cancelled or timed out.'
+-    );
+-  }
+-
+-  if (!enabledApi) {
+-    throw new Error('Wallet connection returned empty API instance from Lace.');
+-  }
+-
+-  let address = '';
+-  let coinPublicKey = '';
+-  let networkId = import.meta.env.VITE_NETWORK || 'undeployed';
+-
+-  // 1. Midnight DApp Connector API format
+-  if (typeof enabledApi.state === 'function') {
+-    try {
+-      const state = await enabledApi.state();
+-      address = state?.address || state?.addressHex || '';
+-      coinPublicKey = state?.coinPublicKey || '';
+-      networkId = state?.networkId || networkId;
+-    } catch (e) {
+-      console.warn('enabledApi.state() call:', e);
+-    }
+-  }
+-
+-  // 2. Cardano CIP-30 API format
+-  if (!address && typeof enabledApi.getUsedAddresses === 'function') {
+-    try {
+-      const addrs = await enabledApi.getUsedAddresses();
+-      if (addrs && addrs.length > 0) address = addrs[0];
+-    } catch (e) {
+-      console.warn('getUsedAddresses call:', e);
+-    }
+-  }
+-
+-  if (!address && typeof enabledApi.getUnusedAddresses === 'function') {
+-    try {
+-      const addrs = await enabledApi.getUnusedAddresses();
+-      if (addrs && addrs.length > 0) address = addrs[0];
+-    } catch (e) {
+-      console.warn('getUnusedAddresses call:', e);
+-    }
+-  }
+-
+-  if (!address && typeof enabledApi.getAddress === 'function') {
+-    try {
+-      address = await enabledApi.getAddress();
+-    } catch (e) {}
+-  }
+-
+-  if (!coinPublicKey && typeof enabledApi.coinPublicKey === 'function') {
+-    try {
+-      const cpk = await enabledApi.coinPublicKey();
+-      coinPublicKey = typeof cpk === 'string' ? cpk : JSON.stringify(cpk);
+-    } catch (e) {}
+-  }
+-
+-  if (typeof enabledApi.getNetworkId === 'function') {
+-    try {
+-      const net = await enabledApi.getNetworkId();
+-      if (net !== undefined) networkId = String(net);
+-    } catch (e) {}
+-  }
+-
+-  if (!address) {
+-    address = 'mn_addr_lace_authenticated';
+-  }
+-
+-  return {
+-    address,
+-    coinPublicKey: coinPublicKey || 'Authenticated via Lace Wallet',
+-    network: networkId,
+-    isConnected: true,
+-  };
+-}
+diff --git a/ui/tsconfig.json b/ui/tsconfig.json
+index e44aa32..5434dec 100644
+--- a/ui/tsconfig.json
++++ b/ui/tsconfig.json
+@@ -1,21 +1,27 @@
+-{
+-  "compilerOptions": {
+-    "target": "es2023",
+-    "module": "esnext",
+-    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+-    "jsx": "react-jsx",
+-    "types": ["vite/client"],
+-    "skipLibCheck": true,
+-
+-    "moduleResolution": "bundler",
+-    "allowImportingTsExtensions": true,
+-    "verbatimModuleSyntax": false,
+-    "moduleDetection": "force",
+-    "noEmit": true,
+-
+-    "noUnusedLocals": false,
+-    "noUnusedParameters": false,
+-    "noFallthroughCasesInSwitch": true
+-  },
+-  "include": ["src"]
+-}
+\ No newline at end of file
++{
++  "compilerOptions": {
++    "target": "ES2022",
++    "lib": ["dom", "dom.iterable", "esnext"],
++    "allowJs": true,
++    "skipLibCheck": true,
++    "strict": true,
++    "noEmit": true,
++    "esModuleInterop": true,
++    "module": "esnext",
++    "moduleResolution": "bundler",
++    "resolveJsonModule": true,
++    "isolatedModules": true,
++    "jsx": "preserve",
++    "incremental": true,
++    "plugins": [
++      {
++        "name": "next"
++      }
++    ],
++    "paths": {
++      "@/*": ["./src/*"]
++    }
++  },
++  "include": ["next-env.d.ts", "src/**/*.ts", "src/**/*.tsx", ".next/types/**/*.ts"],
++  "exclude": ["node_modules", "legacy-vite"]
++}
+diff --git a/vercel.json b/vercel.json
+index e3a40aa..9c36bec 100644
+--- a/vercel.json
++++ b/vercel.json
+@@ -1,6 +1,5 @@
+ {
+   "$schema": "https://openapi.vercel.sh/vercel.json",
+-  "buildCommand": "npm run build",
+-  "outputDirectory": "ui/dist",
+-  "framework": "vite"
++  "buildCommand": "cd ui && npm run build",
++  "framework": "nextjs"
+ }
