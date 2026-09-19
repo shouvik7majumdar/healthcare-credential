@@ -4,7 +4,7 @@
 [![Midnight Network](https://img.shields.io/badge/Midnight-Preprod%20Network-blue)](https://midnight.network)
 [![Zero Knowledge](https://img.shields.io/badge/Zero--Knowledge-Compact%20v0.16-purple)](https://midnight.network)
 [![Category](https://img.shields.io/badge/Midnight-Confidential%20Credentials-success)](https://midnight.network)
-[![Vercel Deployment](https://img.shields.io/badge/Vercel-Live%20App-black?logo=vercel)](https://confidential-prescriptionnn.vercel.app/)
+[![Vercel Deployment](https://img.shields.io/badge/Vercel-Live%20App-black?logo=vercel)](https://medproof-ashen.vercel.app/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **MedProof** is a production-grade, privacy-preserving healthcare credential and consent exchange built on the **Midnight Network** using **Compact** smart contracts and Zero-Knowledge proofs (zk-SNARKs). MedProof empowers patients, authorized healthcare prescribers, and licensed verifiers (pharmacies, insurers, research clinics) to issue, manage, consent to, and verify healthcare credentials without exposing sensitive Personal Health Information (PHI), diagnostic data, or patient/doctor identities on-chain.
@@ -15,7 +15,7 @@
 
 | Resource | Description | Status / Link |
 | :--- | :--- | :--- |
-| **🌐 Live Application** | Deployed web application on Vercel | [Live Demo](https://confidential-prescriptionnn.vercel.app/) |
+| **🌐 Live Application** | Deployed web application on Vercel | [Live Demo](https://medproof-ashen.vercel.app/) |
 | **🐙 GitHub Repository** | Open-source monorepo codebase | [GitHub Repo](https://github.com/shouvik7majumdar/confidential-prescription) |
 | **🎥 Demo Video** | Interactive application walkthrough | [Watch Demo Video (YouTube)](https://youtu.be/-8m0TcUsUUc) |
 | **⚙️ CI/CD Workflow** | GitHub Actions build & verification pipeline | [View CI/CD Pipeline](https://github.com/shouvik7majumdar/confidential-prescription/actions/workflows/ci.yml) |

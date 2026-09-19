@@ -20,7 +20,7 @@ This forensic audit was conducted under adversarial assumptions, rejecting past 
 - **Test Suite & Build:** **VERIFIED (100% PASS)**. 119 automated tests passed across 12 files; Next.js 15.3.9 production build compiles cleanly (exit code 0, 13 routes).
 - **CRITICAL REVEALED SUBMISSION GAPS (MUST BE ADDRESSED BEFORE DEADLINE):**
   1. **Git State Not Synchronized to Remote:** All MedProof improvements (Next.js 15, `medproof.compact`, 119 tests, Preprod scripts) are currently **UNCOMMITTED** in the local working tree. GitHub `origin/main` is still at commit `2e22174` (the old Day 1 Vite prototype). An external reviewer cloning GitHub right now would NOT see MedProof!
-  2. **Live Vercel Out of Sync:** The live Vercel URL (`https://confidential-prescriptionnn.vercel.app/`) is serving the old Day 1 Vite app (`RxVerify`) because Vercel deploys from GitHub `main`.
+  2. **Live Vercel Out of Sync:** The live Vercel URL (`https://medproof-ashen.vercel.app/`) is serving the old Day 1 Vite app (`RxVerify`) because Vercel deploys from GitHub `main`.
   3. **CI/CD Workflow Outdated:** `.github/workflows/ci.yml` still references the old `prescription-verifier.compact` and Vite build variables. Pushing to GitHub as-is would fail CI.
 
 ---
@@ -280,7 +280,7 @@ Executed `cd ui && npm run build` (`next build`):
 
 ### Critical Forensic Discovery
 1. **Local Configuration (`vercel.json`)**: Configured for Next.js (`buildCommand: cd ui && npm run build`).
-2. **Live Vercel State**: Querying `https://confidential-prescriptionnn.vercel.app/` reveals it is **STILL SERVING THE OLD DAY 1 VITE APP** (`RxVerify`, `<title>RxVerify</title>`, `<div id="root"></div>`).
+2. **Live Vercel State**: Querying `https://medproof-ashen.vercel.app/` reveals it is **STILL SERVING THE OLD DAY 1 VITE APP** (`RxVerify`, `<title>RxVerify</title>`, `<div id="root"></div>`).
 3. **Root Cause**: The Next.js migration and all MedProof changes are uncommitted locally and have not been pushed to GitHub `origin/main`. Vercel builds from GitHub `main`, so Vercel is still serving the old deployment from commit `2e22174`.
 
 **Classification**: **LOCAL READY; LIVE VERCEL DEPLOYMENT OUT OF SYNC**.
@@ -395,7 +395,7 @@ Once these repository synchronization steps are executed (commit, update CI work
 
 As a strict, skeptical external judge:
 
-1. **If I look ONLY at the live Vercel demo (`https://confidential-prescriptionnn.vercel.app/`):**  
+1. **If I look ONLY at the live Vercel demo (`https://medproof-ashen.vercel.app/`):**  
    I would see the old Vite application titled "RxVerify" pointing to Preview testnet, rather than the Next.js MedProof application described in the updated README.
 2. **If I look ONLY at GitHub `origin/main` (`https://github.com/shouvik7majumdar/confidential-prescription`):**  
    I would find commit `2e22174` with the old `prescription-verifier.compact` contract and Vite frontend, because the local Next.js code and `medproof.compact` contract have not been pushed.
