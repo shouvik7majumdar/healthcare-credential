@@ -354,12 +354,19 @@ export function detectLaceProvider(): any | null {
  * Supports Promises and RxJS Observables with safe timeout.
  */
 async function invokeApiMethod(target: any, method: string, timeoutMs = 8000): Promise<any> {
-  if (!target || typeof target[method] !== 'function') return undefined;
+  if (!target) return undefined;
+  const val = target[method];
+  if (val === undefined) return undefined;
+
   let res: any;
-  try {
-    res = target[method]();
-  } catch (syncErr) {
-    throw syncErr;
+  if (typeof val === 'function') {
+    try {
+      res = target[method]();
+    } catch (syncErr) {
+      throw syncErr;
+    }
+  } else {
+    res = val;
   }
 
   if (res && typeof res.then === 'function') {
@@ -531,16 +538,20 @@ export async function fetchWalletAddressData(
         const hasUnshielded = typeof walletApi.getUnshieldedAddress === 'function';
         const hasShielded = typeof walletApi.getShieldedAddresses === 'function';
 
-        const [unshieldedRes, shieldedRes] = await Promise.all([
+        const hasState = typeof walletApi.state === 'function' || (walletApi.state && typeof walletApi.state.subscribe === 'function');
+        const [unshieldedRes, shieldedRes, stateRes] = await Promise.all([
           hasUnshielded
             ? invokeApiMethod(walletApi, 'getUnshieldedAddress', 2500)
-            : Promise.resolve(null),
+            : (walletApi.unshieldedAddress !== undefined ? invokeApiMethod(walletApi, 'unshieldedAddress', 2500) : Promise.resolve(null)),
           hasShielded
             ? invokeApiMethod(walletApi, 'getShieldedAddresses', 2500)
+            : (walletApi.shieldedAddresses !== undefined ? invokeApiMethod(walletApi, 'shieldedAddresses', 2500) : Promise.resolve(null)),
+          hasState
+            ? invokeApiMethod(walletApi, 'state', 2500)
             : Promise.resolve(null),
         ]);
 
-        let address = extractAddressString(unshieldedRes) || extractAddressString(shieldedRes);
+        let address = extractAddressString(unshieldedRes) || extractAddressString(shieldedRes) || extractAddressString(stateRes) || extractAddressString(walletApi.address) || extractAddressString(walletApi);
         let coinPublicKey: string | null = null;
         let encryptionPublicKey: string | null = null;
 
@@ -751,16 +762,17 @@ export async function connectLaceWallet(preferredNetworkId?: string, timeoutMs =
     let walletDataStatus: WalletDataStatus = 'LOADING';
     let errorMessage: string | null = null;
 
-    const hasUnshielded = typeof walletApi.getUnshieldedAddress === 'function';
-    const hasShielded = typeof walletApi.getShieldedAddresses === 'function';
+    const hasUnshielded = typeof walletApi.getUnshieldedAddress === 'function' || walletApi.unshieldedAddress !== undefined;
+    const hasShielded = typeof walletApi.getShieldedAddresses === 'function' || walletApi.shieldedAddresses !== undefined;
+    const hasState = typeof walletApi.state === 'function' || (walletApi.state && typeof walletApi.state.subscribe === 'function');
     const hasNetId = typeof walletApi.getNetworkId === 'function';
 
     let initialErrorMsg: string | null = null;
 
     try {
-      const [unshieldedRes, shieldedRes, netIdRes] = await Promise.all([
+      const [unshieldedRes, shieldedRes, stateRes, netIdRes] = await Promise.all([
         hasUnshielded
-          ? invokeApiMethod(walletApi, 'getUnshieldedAddress', 2500).catch((err) => {
+          ? invokeApiMethod(walletApi, typeof walletApi.getUnshieldedAddress === 'function' ? 'getUnshieldedAddress' : 'unshieldedAddress', 2500).catch((err) => {
               initialErrorMsg = err?.message || String(err);
               if (process.env.NODE_ENV !== 'production') {
                 console.warn('[MEDPROOF-LACE] getUnshieldedAddress initial attempt warning:', err?.message || String(err));
@@ -769,13 +781,16 @@ export async function connectLaceWallet(preferredNetworkId?: string, timeoutMs =
             })
           : Promise.resolve(null),
         hasShielded
-          ? invokeApiMethod(walletApi, 'getShieldedAddresses', 2500).catch((err) => {
+          ? invokeApiMethod(walletApi, typeof walletApi.getShieldedAddresses === 'function' ? 'getShieldedAddresses' : 'shieldedAddresses', 2500).catch((err) => {
               if (!initialErrorMsg) initialErrorMsg = err?.message || String(err);
               if (process.env.NODE_ENV !== 'production') {
                 console.warn('[MEDPROOF-LACE] getShieldedAddresses initial attempt warning:', err?.message || String(err));
               }
               return null;
             })
+          : Promise.resolve(null),
+        hasState
+          ? invokeApiMethod(walletApi, 'state', 2500).catch(() => null)
           : Promise.resolve(null),
         hasNetId
           ? invokeApiMethod(walletApi, 'getNetworkId', 1500).catch(() => null)
@@ -786,7 +801,7 @@ export async function connectLaceWallet(preferredNetworkId?: string, timeoutMs =
         activeNetworkId = netIdRes.trim();
       }
 
-      address = extractAddressString(unshieldedRes) || extractAddressString(shieldedRes) || null;
+      address = extractAddressString(unshieldedRes) || extractAddressString(shieldedRes) || extractAddressString(stateRes) || extractAddressString(walletApi.address) || extractAddressString(walletApi) || null;
 
       if (shieldedRes && typeof shieldedRes === 'object') {
         if (shieldedRes.coinPublicKey) coinPublicKey = String(shieldedRes.coinPublicKey);
