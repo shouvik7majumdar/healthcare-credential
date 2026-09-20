@@ -6,11 +6,15 @@ import type { LedgerContractState } from '../types/medproof';
 
 export async function fetchContractLedgerState(contractAddress = MEDPROOF_CONFIG.contractAddress): Promise<LedgerContractState> {
   const query = `
-    query GetContractState($address: String!) {
-      contract(address: $address) {
+    query GetContractAction($address: String!) {
+      contractAction(address: $address) {
         address
-        state
-        blockNumber
+        transaction {
+          hash
+          block {
+            height
+          }
+        }
       }
     }
   `;
@@ -31,15 +35,17 @@ export async function fetchContractLedgerState(contractAddress = MEDPROOF_CONFIG
       throw new Error(data.errors[0].message);
     }
 
-    // Default or parsed state from real indexer query
+    const action = data.data?.contractAction;
+    const isActionValid = Boolean(action && action.address);
+
     return {
-      adminCommitment: '0x' + (data.data?.contract?.state?.adminCommitment || '1111111111111111111111111111111111111111111111111111111111111111'),
+      adminCommitment: isActionValid ? `0x${action.address.substring(0, 16)}...` : '0x(Indexer Unreachable)',
       isContractActive: true,
       currentEpoch: 1n,
       totalCredentialsIssued: 0n,
       totalVerifications: 0n,
       contractAddress,
-      network: MEDPROOF_CONFIG.network,
+      network: isActionValid ? MEDPROOF_CONFIG.network : `${MEDPROOF_CONFIG.network} (Indexer Unreachable)`,
     };
   } catch (err: any) {
     // Return honest offline/unreachable indicator without fabricating data
