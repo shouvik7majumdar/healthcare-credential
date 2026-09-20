@@ -16,6 +16,13 @@
   <i>MedProof Landing Page — Zero-Knowledge Healthcare Credential & Consent Exchange Overview.</i>
 </p>
 
+<p align="center">
+  <h3>CONFIDENTIAL PATIENT VAULT</h3>
+  <img src="docs/images/patient-vault.png" alt="Confidential Patient Vault" width="100%" />
+  <br />
+  <i>Patient Confidential Vault interface for managing encrypted clinical prescriptions, inspecting zero-knowledge commitments, and controlling verifier consent permissions.</i>
+</p>
+
 ---
 
 ## 🎥 Demo Video & Live Links
