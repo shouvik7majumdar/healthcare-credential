@@ -30,6 +30,7 @@
 | Resource | Description | Status / Link |
 | :--- | :--- | :--- |
 | **🌐 Live Application** | Deployed web application on Vercel | [Live Demo](https://medproof-ashen.vercel.app/) |
+| **🐦 X (Twitter) Account** | Official MedProof X (Twitter) Account | [@MedProof_midnit](https://x.com/MedProof_midnit) |
 | **🐙 GitHub Repository** | Open-source monorepo codebase | [GitHub Repo](https://github.com/shouvik7majumdar/healthcare-credential) |
 | **🎥 Demo Video** | Interactive application walkthrough | [Watch Demo Video (YouTube)](https://youtu.be/-8m0TcUsUUc) |
 | **⚙️ CI/CD Workflow** | GitHub Actions build & verification pipeline | [View CI/CD Pipeline](https://github.com/shouvik7majumdar/healthcare-credential/actions/workflows/ci.yml) |
