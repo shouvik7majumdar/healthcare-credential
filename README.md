@@ -45,57 +45,41 @@ The canonical MedProof smart contract (`medproof.compact`) is deployed and activ
 
 | Field | Details / Authoritative On-Chain Record |
 | :--- | :--- |
-| **Target Network** | Midnight Preprod Network (Network ID: `undeployed` / `preprod`) |
-| **Contract Name** | `medproof.compact` (`@midnight-ntwrk/medproof`) |
-| **Deployed Contract Address** | `94499aa3a15d5818967c5d8acc562daa1656ca07eb873cdfd4eca50d681def626` |
-| **Deployment Tx Hash** | `6187f85d86e03ba2b403d458878695bc10d825166131b68bcb861f074390609e` |
-| **Deployment Block Height** | Block `#2607889` |
-| **Explorer Verification** | [Midnight NightScan Explorer](https://explorer.preprod.midnight.network/) |
+| **Target Network** | Midnight Preprod Network (Network ID: `preprod`) |
+| **Smart Contract Address** | `94499a3a15d5818967c5d8acc562daa1656ca07eb873cdfd4eca50d681def626` |
+| **Node RPC Endpoint** | `https://rpc.preprod.midnight.network` |
 | **Indexer GraphQL API** | `https://indexer.preprod.midnight.network/api/v4/graphql` |
 | **Indexer WebSocket** | `wss://indexer.preprod.midnight.network/api/v4/graphql/ws` |
 | **Proof Server Engine** | Midnight Proof Server `v8.1.0` (`http://127.0.0.1:6300`) |
 
-### Verified Complete On-Chain Transaction Provenance (All 7 Lifecycle Steps)
-
-MedProof has genuinely executed and independently verified the full end-to-end zero-knowledge confidential credential lifecycle on the live Midnight Preprod blockchain:
-
-| Stage | Operation | On-Chain Transaction Hash | Block Height | Status |
-| :--- | :--- | :--- | :--- | :--- |
-| **0. Deployment** | Deploy `medproof.compact` | `6187f85d86e03ba2b403d458878695bc10d825166131b68bcb861f074390609e` | `2607889` | **CONFIRMED** |
-| **1. Authorization** | `authorizeProvider(0xba4a...)` | `00b772a566cee43b7a5e560eeff3e77d85856e042868396d1a7ee9236fe5640fc1` | `2608061` | **CONFIRMED** |
-| **2. Credential Issuance** | `issueCredential(0xf66d...)` | `00a30d7b0e201a543f1de032f061e0ee954a8393bb71b786755724e16deed39c9e` | `2608563` | **CONFIRMED** |
-| **3. Consent Grant** | `grantConsent(0xf889...)` | `00cbe31e7ce13c4c46a1c70805c0621276e7934c6393974965b17a6272173b4086` | `2608758` | **CONFIRMED** |
-| **4. Repaired Issuance** | `issueCredential(0x1621...)` | `007c9aae77cf683c394e2c62ecf06cc425a4932656b4804b0e0fb6253ad7c5e51e` | `2621507` | **CONFIRMED** |
-| **5. Repaired Consent** | `grantConsent(0x906e...)` | `004f13eb6312cfb899486e0ba7c9947ef2ae7e6a3b1f1b087855c6ef57648a762c` | `2621575` | **CONFIRMED** |
-| **6. ZK Verification** | `verifyCredential(nullifier, ...)` | `00be95d3b45b8dc8d74dd1646667555db42da03f83929b5a8b26b846df95854456` | `2621646` | **CONFIRMED** |
-
-*(Historical note: The earlier prototype `prescription-verifier.compact` was deployed on Preview Testnet at address `54b40b55db6c344ddb1511d13c93e2bbbb280b4c1738b912cd838f5ac94df8dc` in Block `#271826`.)*
+### Cryptographic Domain Consistency
+All commitments, nullifiers, and consent records are derived using Midnight's native Poseidon hash primitives:
+- **Patient Commitment**: `Poseidon(patientSecret, pad(32, "PATIENT_ID"))`
+- **Credential Commitment**: `Poseidon(disclosedIssuerCommitment, patientCommitment, schemaHash, categoryHash, epochHash, payloadHash, salt)`
+- **Consent Identifier**: `Poseidon(patientSecret, verifierPk, credentialCommitment, pad(32, "MEDPROOF_CONSENT"))`
+- **Verification Nullifier (Single-Use Dispense)**: `Poseidon(patientSecret, commitment, pad(32, "DISPENSE"), epochHash)`
+- **Verification Receipt**: `Poseidon(commitment, verifierPk, sessionNonce, pad(32, "RECEIPT"))`
 
 ---
 
 ## 🔒 Cryptographic Architecture & Privacy Guarantees
 
-In MedProof, all health data and personal identifiers are strictly partitioned into **Client-Side Private Witness State** and **On-Chain Public State**.
+In MedProof, all clinical health data and personal identifiers are strictly partitioned into **Client-Side Private Witness State** and **On-Chain Public Ledger State**.
 
-### Client-Side Witness State (Never Disclosed)
-1. **Patient Secret (`patientSecret`)**: A 256-bit entropy seed known solely to the patient, used to derive the patient commitment and cryptographic nullifiers.
-2. **Clinical Content & PHI**: Diagnostic codes, medication names, dosages, instructions, and notes remain strictly in the patient and doctor local storage.
-3. **Commitment Salt**: Random nonces that prevent dictionary and rainbow-table attacks against commitments.
-4. **Consent Pre-images**: Verifier authorization proof evaluated locally inside the ZK prover.
+### Client-Side Private Witness State (Never Disclosed)
+1. **Patient Secret (`patientSecret`)**: A 256-bit entropy seed known solely to the patient, used locally to derive patient commitments, consent identifiers, and cryptographic nullifiers.
+2. **Clinical Content & PHI**: Diagnoses, medication names, dosages, instructions, and clinical notes remain strictly inside client-side storage.
+3. **Salts & Nonces**: Cryptographic nonces that prevent dictionary and rainbow-table attacks against registered commitments.
+4. **Consent Pre-images**: Verifier authorization inputs evaluated locally inside the Midnight ZK prover engine.
 
 ### On-Chain Public Ledger State (Transparent & Verifiable)
-1. **`totalCredentialsIssued`**: Monotonically increasing counter of registered credential commitments (`2`).
-2. **`totalVerifications`**: Verified zero-knowledge proof counter on Preprod (`1`).
-3. **`authorizedProviders`**: Map of verified healthcare provider public keys authorized to issue credentials.
-4. **`activeConsents`**: Map of active consent identifiers linking credential commitments to verifiers with expiration epochs.
-5. **`nullifiers`**: Cryptographic nullifiers preventing double-presentation or replay of single-use credentials.
-
-### Cryptographic Domain Consistency
-All commitments and nullifiers are calculated using the Midnight Poseidon hash primitive:
-- **Patient Commitment**: `Poseidon(pad(32, "PATIENT_ID"), patientSecret)`
-- **Credential Commitment**: `Poseidon(providerPk, patientCommitment, expiry, pad(32, "MEDPROOF_SALT"))`
-- **Consent Identifier**: `Poseidon(patientCommitment, verifierPk, credentialCommitment)`
-- **Verification Nullifier**: `Poseidon(pad(32, "MEDPROOF_NULLIFIER"), patientSecret, credentialCommitment)`
+1. **`totalCredentialsIssued`**: Monotonically increasing counter of registered credential commitments on Preprod.
+2. **`totalVerifications`**: Verified zero-knowledge proof execution counter on Preprod.
+3. **`authorizedProviders`**: Ledger mapping of authorized healthcare provider public key commitments.
+4. **`issuedCredentials`**: Ledger mapping of active credential commitments.
+5. **`revokedCredentials`**: Ledger mapping of revoked credential commitments.
+6. **`activeConsents`**: Ledger mapping of active bilateral patient-to-verifier consent identifiers.
+7. **`nullifiers`**: Ledger mapping of consumed dispense nullifiers preventing double-dispensing.
 
 ---
 
@@ -104,20 +88,20 @@ All commitments and nullifiers are calculated using the Midnight Poseidon hash p
 MedProof is organized as an enterprise monorepo:
 
 ```text
-confidential-prescription-verification/
+healthcare-credential/
 ├── contracts/                  # Midnight Compact smart contract workspace
-│   ├── medproof.compact        # Production Compact contract with full consent lifecycle
+│   ├── medproof.compact        # Production Compact contract with 9 ZK circuits
 │   └── managed/medproof/       # Compiled ZK circuit artifacts & TypeScript bindings
 ├── ui/                         # Next.js 15 App Router web application
-│   ├── src/app/                # 7 Healthcare workflows (/patient, /provider, /consent, etc.)
+│   ├── src/app/                # 7 Healthcare portals (/patient, /provider, /consent, etc.)
 │   ├── src/services/           # Lace Wallet integration & Midnight contract services
-│   ├── src/context/            # Context state distinguishing demo vs live on-chain data
+│   ├── src/context/            # Shared reactive application state
 │   └── src/lib/config.ts       # Canonical Preprod network configuration
-├── src/                        # Admin CLI, deployment, wallet, and network utilities
-├── scripts/                    # Verified lifecycle execution & verification scripts
+├── src/                        # Deployment, wallet, and CLI utilities
+├── scripts/                    # Verified lifecycle & verification scripts
 ├── tests/                      # 119 unit and integration tests (Vitest)
 ├── docs/images/                # Visual assets and UI screenshots
-└── vercel.json                 # Vercel deployment configuration
+└── vercel.json                 # Vercel production deployment configuration
 ```
 
 ### Full-Stack Healthcare Portals
@@ -134,10 +118,10 @@ confidential-prescription-verification/
 
 The application integrates natively with the official **Midnight Lace Browser Wallet** via the DApp Connector standard (`window.midnight.mnLace`):
 
-1. **Auto-Detection**: Probes for the Lace extension and handles locked/disconnected states gracefully.
-2. **Access Authorization**: Requests read permissions for the user's Midnight Preprod address.
-3. **Hardware & Session Resiliency**: Incorporates backoff timeouts, session heartbeat caching, and network mismatch alerts.
-4. **ZK Proof Signing**: Submits zero-knowledge transactions with real tNIGHT balances and DUST fee management.
+1. **Auto-Detection & Handshake**: Probes for the Lace extension and handles locked, disconnected, or missing provider states gracefully.
+2. **Access Authorization**: Requests read permissions for the user's Midnight Preprod address via `connect('preprod')`.
+3. **Resilient Session Management**: Incorporates non-fatal readiness retries, bounded lock detection, and extension channel shutdown recovery.
+4. **On-Chain ZK Proof Transactions**: Executes zero-knowledge transactions on Midnight Preprod with real tNIGHT balances and DUST fee management.
 
 ---
 
@@ -153,22 +137,20 @@ npm test
 
 ```text
  ✓ tests/lace-connection-optimization.test.ts (6 tests)
- ✓ tests/lace-session-robustness.test.ts (7 tests)
+ ✓ tests/lace-session-robustness.test.ts (10 tests)
  ✓ tests/lace-fast-reconnect.test.ts (5 tests)
- ✓ tests/phase6c-grant-consent.test.ts (8 tests)
+ ✓ tests/phase6c-grant-consent.test.ts (6 tests)
  ✓ tests/phase9r-domain-repair.test.ts (6 tests)
  ✓ tests/healthcare.test.ts (9 tests)
  ✓ tests/privacy.test.ts (7 tests)
  ✓ tests/contract.test.ts (9 tests)
  ✓ tests/network.test.ts (5 tests)
- ✓ tests/level4-ux-upgrade.test.ts (24 tests)
- ✓ tests/ui-nextjs-integration.test.ts (19 tests)
+ ✓ tests/level4-ux-upgrade.test.ts (16 tests)
+ ✓ tests/ui-nextjs-integration.test.ts (26 tests)
  ✓ tests/medproof-contract.test.ts (14 tests)
 
  Test Files  12 passed (12)
       Tests  119 passed (119)
-   Start at  18:38:00
-   Duration  2.83s
 ```
 
 ---
