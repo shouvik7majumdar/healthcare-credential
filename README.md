@@ -10,6 +10,7 @@
 **MedProof** is a production-grade, privacy-preserving healthcare credential and consent exchange built on the **Midnight Network** using **Compact** smart contracts and Zero-Knowledge proofs (zk-SNARKs). MedProof empowers patients, authorized healthcare prescribers, and licensed verifiers (pharmacies, insurers, research clinics) to issue, manage, consent to, and verify healthcare credentials without exposing sensitive Personal Health Information (PHI), diagnostic data, or patient/doctor identities on-chain.
 
 <p align="center">
+  <h3>LANDING PAGE</h3>
   <img src="docs/images/landing-page.png" alt="MedProof Landing Page" width="100%" />
   <br />
   <i>MedProof Landing Page — Zero-Knowledge Healthcare Credential & Consent Exchange Overview.</i>
