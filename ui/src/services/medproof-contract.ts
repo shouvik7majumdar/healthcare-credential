@@ -99,9 +99,9 @@ export async function checkPreprodTxStatus(txHash: string): Promise<{ confirmed:
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, variables: { hash: cleanHash } }),
-    });
+    }).catch(() => null);
 
-    if (!res.ok) return { confirmed: false };
+    if (!res || !res.ok) return { confirmed: false };
     const data = await res.json();
     const tx = data?.data?.transactions?.[0];
     if (tx && tx.block && typeof tx.block.height === 'number') {
@@ -127,10 +127,18 @@ export class MedProofContractService {
   // Truthful check of proof server readiness
   async checkProofServerHealth(): Promise<boolean> {
     try {
+      if (typeof window !== 'undefined') {
+        const res = await fetch('/api/health', { method: 'GET' }).catch(() => null);
+        if (res && res.ok) {
+          const data = await res.json().catch(() => null);
+          return Boolean(data?.proofServerOnline);
+        }
+        return false;
+      }
       const resp = await fetch(`${MEDPROOF_CONFIG.proofServerUrl}/health`, { method: 'GET' }).catch(() => null);
       if (resp && resp.ok) return true;
       const keyResp = await fetch(`${MEDPROOF_CONFIG.proofServerUrl}/provingKey`, { method: 'GET' }).catch(() => null);
-      return Boolean(keyResp);
+      return Boolean(keyResp && keyResp.ok);
     } catch {
       return false;
     }

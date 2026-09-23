@@ -46,9 +46,9 @@ The canonical MedProof smart contract (`medproof.compact`) is deployed and activ
 | Field | Details / Authoritative On-Chain Record |
 | :--- | :--- |
 | **Target Network** | Midnight Preprod Network (Network ID: `preprod`) |
-| **Smart Contract Address** | `94499aa3a15d5818967c5d8acc562daa1656ca07eb873cdfd4eca50d681def626` |
-| **Deployment Transaction Hash** | `0329c0bad4d3e396b90a939343bdd2f674aec5f7f0cec6fde35e754b0a75c435` |
-| **Deployment Block Height** | `#2621646` |
+| **Smart Contract Address** | `94499a3a15d5818967c5d8acc562daa1656ca07eb873cdfd4eca50d681def626` |
+| **Contract Deployment Tx Hash** | `6187f85d86e03ba2b403d458878695bc10d825166131b68bcb861f074390609e` (Block `#2607889`) |
+| **Latest Verified ZK Action Tx** | `0329c0bad4d3e396b90a939343bdd2f674aec5f7f0cecf6de35e754b0a75c435` (Block `#2621646`) |
 | **Node RPC Endpoint** | `https://rpc.preprod.midnight.network` |
 | **Indexer GraphQL API** | `https://indexer.preprod.midnight.network/api/v4/graphql` |
 | **Indexer WebSocket** | `wss://indexer.preprod.midnight.network/api/v4/graphql/ws` |

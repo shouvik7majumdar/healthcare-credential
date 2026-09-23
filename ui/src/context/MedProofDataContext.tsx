@@ -151,12 +151,22 @@ export function MedProofDataProvider({ children }: { children: React.ReactNode }
   });
 
   const refreshSystemStatus = useCallback(async () => {
-    const proofServerOk = await medproofService.checkProofServerHealth();
+    let proofServerOk = false;
     let indexerOk = false;
+
     try {
-      const state = await fetchContractLedgerState();
-      indexerOk = !state.network.includes('Offline');
+      const res = await fetch('/api/health').catch(() => null);
+      if (res && res.ok) {
+        const data = await res.json().catch(() => null);
+        proofServerOk = Boolean(data?.proofServerOnline);
+        indexerOk = Boolean(data?.indexerOnline);
+      } else {
+        proofServerOk = await medproofService.checkProofServerHealth().catch(() => false);
+        const state = await fetchContractLedgerState().catch(() => null);
+        indexerOk = Boolean(state && !state.network.includes('Offline'));
+      }
     } catch {
+      proofServerOk = false;
       indexerOk = false;
     }
 

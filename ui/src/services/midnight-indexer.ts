@@ -24,10 +24,10 @@ export async function fetchContractLedgerState(contractAddress = MEDPROOF_CONFIG
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, variables: { address: contractAddress } }),
-    });
+    }).catch(() => null);
 
-    if (!response.ok) {
-      throw new Error(`Indexer HTTP ${response.status}: ${response.statusText}`);
+    if (!response || !response.ok) {
+      throw new Error(response ? `Indexer HTTP ${response.status}: ${response.statusText}` : 'Indexer unreachable');
     }
 
     const data = await response.json();
