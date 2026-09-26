@@ -109,32 +109,10 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
 
-  // Event-driven discovery with immediate scan, window events, and controlled interval that PAUSES when connected
+  // Passive discovery scan on mount only
   useEffect(() => {
     scan();
-
-    // Do NOT run periodic polling when connected OR during active Lace authorization
-    // Scanning during CONNECTING/WAITING_FOR_LACE causes state re-renders that can interrupt the auth flow
-    if (
-      wallet.status === 'CONNECTED' ||
-      wallet.status === 'CONNECTING' ||
-      wallet.status === 'WAITING_FOR_LACE'
-    ) {
-      return;
-    }
-
-    const interval = setInterval(scan, 3000);
-
-    const onFocus = () => scan();
-    window.addEventListener('focus', onFocus);
-    window.addEventListener('load', onFocus);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('focus', onFocus);
-      window.removeEventListener('load', onFocus);
-    };
-  }, [scan, wallet.status]);
+  }, []);
 
   const cancelConnection = useCallback(() => {
     currentAttemptIdRef.current++;
@@ -288,30 +266,10 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
   }, [targetNetworkId, selectedWallet]);
 
-  // Truthful Session-Aware Auto-Reconnect for previously connected sessions
+  // Session-Aware Auto-Reconnect marker (disabled automatic execution to require explicit user clicks)
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    let wasPreviouslyConnected = false;
-    try {
-      wasPreviouslyConnected = localStorage.getItem('medproof_previously_connected') === 'true';
-    } catch {}
-
-    if (wasPreviouslyConnected && !hasAutoConnectedRef.current && !isConnectingRef.current) {
-      hasAutoConnectedRef.current = true;
-      const timer = setTimeout(() => {
-        const providers = detectAllMidnightProviders();
-        const selected = selectLaceProvider(providers);
-        if (selected) {
-          connect('preprod').catch((err: any) => {
-            if (process.env.NODE_ENV !== 'production') {
-              console.log('[MEDPROOF-LACE] Auto-reconnect notice:', err?.message || String(err));
-            }
-          });
-        }
-      }, 50);
-      return () => clearTimeout(timer);
-    }
-  }, [connect]);
+    // No automatic connect() execution on mount
+  }, []);
 
 
   const runDirectTest = useCallback(async (netId?: string) => {
