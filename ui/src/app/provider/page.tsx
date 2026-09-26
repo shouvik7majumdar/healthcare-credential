@@ -316,7 +316,7 @@ export default function ProviderPortalPage() {
           marginBottom: '20px',
           padding: '16px 20px',
           borderRadius: '8px',
-          background: issueStatus.stage === 'confirmed' ? 'rgba(16, 185, 129, 0.15)' : issueStatus.stage === 'failed' || issueStatus.stage === 'rejected' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(59, 130, 246, 0.15)',
+          background: issueStatus.stage === 'confirmed' ? 'rgba(16, 185, 129, 0.15)' : issueStatus.stage === 'failed' || issueStatus.stage === 'rejected' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(133, 209, 219, 0.14)',
           border: `1px solid ${issueStatus.stage === 'confirmed' ? 'var(--accent-emerald)' : issueStatus.stage === 'failed' || issueStatus.stage === 'rejected' ? 'var(--accent-rose)' : 'var(--accent-blue)'}`,
           fontSize: '13px'
         }}>
@@ -355,7 +355,7 @@ export default function ProviderPortalPage() {
           marginBottom: '20px',
           padding: '14px 18px',
           borderRadius: '8px',
-          background: feedback.type === 'success' ? 'rgba(16, 185, 129, 0.12)' : feedback.type === 'error' ? 'rgba(239, 68, 68, 0.12)' : 'rgba(59, 130, 246, 0.12)',
+          background: feedback.type === 'success' ? 'rgba(16, 185, 129, 0.12)' : feedback.type === 'error' ? 'rgba(239, 68, 68, 0.12)' : 'rgba(133, 209, 219, 0.11)',
           border: `1px solid ${feedback.type === 'success' ? 'var(--accent-emerald)' : feedback.type === 'error' ? 'var(--accent-rose)' : 'var(--accent-blue)'}`,
           color: 'var(--text-primary)',
           fontSize: '13px'

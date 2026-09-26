@@ -105,7 +105,7 @@ export default function PatientVaultPage() {
             <span>Active &amp; Valid</span>
             <span>✅</span>
           </div>
-          <div className="metric-value" style={{ color: '#34d399' }}>{activeCount}</div>
+          <div className="metric-value" style={{ color: '#2eb87e' }}>{activeCount}</div>
           <div className="metric-meta">Satisfies ZK Circuits</div>
         </div>
 
@@ -524,8 +524,8 @@ export default function PatientVaultPage() {
                 </ul>
               </div>
 
-              <div style={{ background: 'rgba(52, 211, 153, 0.08)', border: '1px solid rgba(52, 211, 153, 0.25)', borderRadius: '8px', padding: '12px', fontSize: '12px' }}>
-                <div style={{ fontWeight: 600, color: '#34d399', marginBottom: '8px' }}>
+              <div style={{ background: 'rgba(182, 242, 209, 0.08)', border: '1px solid rgba(52, 211, 153, 0.25)', borderRadius: '8px', padding: '12px', fontSize: '12px' }}>
+                <div style={{ fontWeight: 600, color: '#2eb87e', marginBottom: '8px' }}>
                   🌐 Public Ledger Record (Midnight Preprod)
                 </div>
                 <ul style={{ listStyle: 'none', paddingLeft: 0, display: 'flex', flexDirection: 'column', gap: '6px', color: '#e0e7ff' }}>

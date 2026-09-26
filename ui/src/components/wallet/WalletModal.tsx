@@ -198,7 +198,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
         {wallet.status === 'CONNECTING' && (
           <div style={{
             background: 'rgba(14, 165, 233, 0.15)',
-            border: '2px solid #38bdf8',
+            border: '2px solid #85D1DB',
             borderRadius: '10px',
             padding: '16px',
             marginBottom: '16px',
@@ -211,7 +211,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
               justifyContent: 'space-between',
               marginBottom: '10px',
             }}>
-              <div style={{ fontWeight: 700, fontSize: '15px', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ fontWeight: 700, fontSize: '15px', color: '#85D1DB', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '18px', animation: 'pulse 1.5s infinite' }}>🔔</span>
                 Action Required in Google Chrome
               </div>
@@ -233,19 +233,19 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
               marginBottom: '12px',
             }}>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'flex-start' }}>
-                <span style={{ background: '#38bdf8', color: '#070a12', fontWeight: 800, borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', flexShrink: 0 }}>1</span>
+                <span style={{ background: '#85D1DB', color: '#052428', fontWeight: 800, borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', flexShrink: 0 }}>1</span>
                 <div>Look at the <strong>top-right</strong> corner of your Chrome browser.</div>
               </div>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'flex-start' }}>
-                <span style={{ background: '#38bdf8', color: '#070a12', fontWeight: 800, borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', flexShrink: 0 }}>2</span>
+                <span style={{ background: '#85D1DB', color: '#052428', fontWeight: 800, borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', flexShrink: 0 }}>2</span>
                 <div>Click the <strong>🧩 (Extensions) puzzle piece icon</strong> next to the address bar.</div>
               </div>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'flex-start' }}>
-                <span style={{ background: '#38bdf8', color: '#070a12', fontWeight: 800, borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', flexShrink: 0 }}>3</span>
+                <span style={{ background: '#85D1DB', color: '#052428', fontWeight: 800, borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', flexShrink: 0 }}>3</span>
                 <div>Click <strong>Lace</strong> (or Midnight Lace) from the dropdown list.</div>
               </div>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                <span style={{ background: '#38bdf8', color: '#070a12', fontWeight: 800, borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', flexShrink: 0 }}>4</span>
+                <span style={{ background: '#85D1DB', color: '#052428', fontWeight: 800, borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', flexShrink: 0 }}>4</span>
                 <div>The Lace <strong>Side Panel</strong> opens on the right. If locked, enter your password, then click <strong>Authorize</strong>.</div>
               </div>
             </div>
@@ -265,7 +265,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: '#38bdf8',
+                  color: '#85D1DB',
                   fontSize: '11px',
                   cursor: 'pointer',
                   textDecoration: 'underline',
@@ -391,8 +391,8 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
         {/* Waiting for Lace Banner */}
         {(wallet.status === 'CONNECTING' || wallet.status === 'WAITING_FOR_LACE') && (
           <div style={{
-            background: 'rgba(0, 242, 254, 0.08)',
-            border: '1px solid rgba(0, 242, 254, 0.3)',
+            background: 'rgba(133, 209, 219, 0.08)',
+            border: '1px solid rgba(133, 209, 219, 0.28)',
             borderRadius: '8px',
             padding: '12px 14px',
             marginBottom: '16px',
@@ -501,7 +501,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
             }}>
               <div style={{ marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                 <div>window.midnight present: <span style={{ color: diagnostics.windowMidnightPresent ? '#34d399' : '#f87171' }}>{diagnostics.windowMidnightPresent ? 'YES' : 'NO'}</span></div>
-                <div>Discovered Providers: <span style={{ color: '#38bdf8' }}>{discoveredWallets.length}</span></div>
+                <div>Discovered Providers: <span style={{ color: '#85D1DB' }}>{discoveredWallets.length}</span></div>
                 <div>Injected Keys: <span style={{ color: 'var(--text-muted)' }}>{diagnostics.providerKeys.length > 0 ? diagnostics.providerKeys.join(', ') : '(none)'}</span></div>
                 <div>Scan Count: {diagnostics.scanCount} (Last: {diagnostics.lastScanTime})</div>
               </div>
@@ -524,8 +524,8 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
                   <div style={{
                     padding: '8px',
                     borderRadius: '4px',
-                    background: directTestResult.success ? 'rgba(52, 211, 153, 0.1)' : 'rgba(244, 63, 94, 0.1)',
-                    border: `1px solid ${directTestResult.success ? 'rgba(52, 211, 153, 0.3)' : 'rgba(244, 63, 94, 0.3)'}`,
+                    background: directTestResult.success ? 'rgba(182, 242, 209, 0.09)' : 'rgba(244, 63, 94, 0.1)',
+                    border: `1px solid ${directTestResult.success ? 'rgba(182, 242, 209, 0.30)' : 'rgba(244, 63, 94, 0.3)'}`,
                   }}>
                     <div>Status: <span style={{ color: directTestResult.success ? '#34d399' : '#f87171' }}>{directTestResult.success ? 'SUCCESS (RESOLVED)' : 'ERROR / REJECTED'}</span></div>
                     <div>Elapsed Time: {directTestResult.elapsedMs}ms</div>

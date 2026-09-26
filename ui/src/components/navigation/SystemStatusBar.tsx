@@ -43,7 +43,7 @@ export function SystemStatusBar() {
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <span className="status-dot status-dot-green" title="Active Network" />
           <span style={{ color: 'var(--text-muted)', marginRight: '4px' }}>NETWORK:</span>
-          <span style={{ color: '#38bdf8', fontWeight: 600 }}>{systemStatus.network}</span>
+          <span style={{ color: '#85D1DB', fontWeight: 600 }}>{systemStatus.network}</span>
         </div>
 
         {/* Contract Address */}

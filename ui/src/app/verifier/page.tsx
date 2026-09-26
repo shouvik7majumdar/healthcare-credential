@@ -332,37 +332,37 @@ function VerifierPortalContent() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px' }}>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <span style={{ color: '#34d399' }}>✓</span>
+                  <span style={{ color: '#2eb87e' }}>✓</span>
                   <div>
                     <strong>Issuer Authority:</strong> Confirms issuing doctor is in <code>authorizedProviders</code> mapping.
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <span style={{ color: '#34d399' }}>✓</span>
+                  <span style={{ color: '#2eb87e' }}>✓</span>
                   <div>
                     <strong>Expiration Validity:</strong> Enforces <code>expirationEpoch &gt;= currentEpoch</code>.
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <span style={{ color: '#34d399' }}>✓</span>
+                  <span style={{ color: '#2eb87e' }}>✓</span>
                   <div>
                     <strong>Category Compliance:</strong> Mathematically asserts <code>category &gt;= requiredCategory</code>.
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <span style={{ color: '#34d399' }}>✓</span>
+                  <span style={{ color: '#2eb87e' }}>✓</span>
                   <div>
                     <strong>Non-Revocation:</strong> Verified against <code>revokedCredentials</code> mapping.
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <span style={{ color: '#34d399' }}>✓</span>
+                  <span style={{ color: '#2eb87e' }}>✓</span>
                   <div>
                     <strong>Bilateral Patient Consent:</strong> Patient secret authorized this specific verifier.
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <span style={{ color: '#34d399' }}>✓</span>
+                  <span style={{ color: '#2eb87e' }}>✓</span>
                   <div>
                     <strong>Nullifier Protection:</strong> Controlled substances prevent double-dispensing.
                   </div>
@@ -533,7 +533,7 @@ function VerifierPortalContent() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: 'var(--bg-input)', borderRadius: '6px' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Midnight Network:</span>
-                <span style={{ color: '#38bdf8', fontWeight: 600 }}>Midnight Preprod</span>
+                <span style={{ color: '#85D1DB', fontWeight: 600 }}>Midnight Preprod</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: 'var(--bg-input)', borderRadius: '6px' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Contract Deployment:</span>
@@ -591,7 +591,7 @@ function VerifierPortalContent() {
               {latestResult.outcome === 'SUCCESS' ? (
                 <>
                   <div style={{ fontSize: '48px', marginBottom: '8px' }}>✅</div>
-                  <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#34d399' }}>
+                  <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#2eb87e' }}>
                     CLAIM MATHEMATICALLY VERIFIED
                   </h2>
                   <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
@@ -623,7 +623,7 @@ function VerifierPortalContent() {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Nullifier Consumption:</span>
-                <span style={{ color: latestResult.nullifierConsumed ? '#c084fc' : 'var(--text-muted)' }}>
+                <span style={{ color: latestResult.nullifierConsumed ? '#B3EBF2' : 'var(--text-muted)' }}>
                   {latestResult.nullifierConsumed ? '⚡ Consumed (Replay Prevented)' : 'Not Single-Use'}
                 </span>
               </div>
@@ -639,12 +639,12 @@ function VerifierPortalContent() {
 
             {/* Privacy Tag */}
             <div style={{
-              background: 'rgba(52, 211, 153, 0.1)',
-              border: '1px solid rgba(52, 211, 153, 0.3)',
+              background: 'rgba(182, 242, 209, 0.09)',
+              border: '1px solid rgba(182, 242, 209, 0.30)',
               borderRadius: '6px',
               padding: '10px 12px',
               fontSize: '12px',
-              color: '#34d399',
+              color: '#2eb87e',
               textAlign: 'center',
               fontWeight: 500,
               marginBottom: '16px',

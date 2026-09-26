@@ -170,7 +170,7 @@ export default function Home() {
             </div>
             <div className="metric-value">{totalVaultRegistrations}</div>
             <div className="metric-meta">
-              <span style={{ color: '#60a5fa', fontWeight: 600 }}>My Vault</span>
+              <span style={{ color: '#85D1DB', fontWeight: 600 }}>My Vault</span>
               <span>· Client Session</span>
             </div>
           </div>
@@ -181,7 +181,7 @@ export default function Home() {
               <span>Active Credentials</span>
               <span title="Valid & unrevoked credentials">✅</span>
             </div>
-            <div className="metric-value" style={{ color: '#34d399' }}>
+            <div className="metric-value" style={{ color: '#2eb87e' }}>
               {activeCredentials}
             </div>
             <div className="metric-meta">
@@ -209,7 +209,7 @@ export default function Home() {
               <span>Active Consents</span>
               <span title="Authorized verifier consents">🛡️</span>
             </div>
-            <div className="metric-value" style={{ color: '#818cf8' }}>
+            <div className="metric-value" style={{ color: '#B3EBF2' }}>
               {activeConsents}
             </div>
             <div className="metric-meta">
@@ -223,7 +223,7 @@ export default function Home() {
               <span>ZK Verifications</span>
               <span title="Verification attempts in current session">⚡</span>
             </div>
-            <div className="metric-value" style={{ color: '#a5b4fc' }}>
+            <div className="metric-value" style={{ color: '#B3EBF2' }}>
               {sessionVerifications}
             </div>
             <div className="metric-meta">
@@ -271,7 +271,7 @@ export default function Home() {
           </div>
 
           {/* Arrow 1 */}
-          <div className="privacy-arrow" style={{ textAlign: 'center', color: '#818cf8', fontSize: '20px', fontWeight: 700 }}>
+          <div className="privacy-arrow" style={{ textAlign: 'center', color: '#B3EBF2', fontSize: '20px', fontWeight: 700 }}>
             →
           </div>
 
@@ -279,7 +279,7 @@ export default function Home() {
           <div className="privacy-column privacy-column-proven">
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
               <span style={{ fontSize: '16px' }}>⚡</span>
-              <div style={{ fontWeight: 700, fontSize: '13px', color: '#60a5fa' }}>
+              <div style={{ fontWeight: 700, fontSize: '13px', color: '#85D1DB' }}>
                 Compact ZK Circuit
               </div>
             </div>
@@ -295,7 +295,7 @@ export default function Home() {
           </div>
 
           {/* Arrow 2 */}
-          <div className="privacy-arrow" style={{ textAlign: 'center', color: '#34d399', fontSize: '20px', fontWeight: 700 }}>
+          <div className="privacy-arrow" style={{ textAlign: 'center', color: '#2eb87e', fontSize: '20px', fontWeight: 700 }}>
             →
           </div>
 
@@ -303,7 +303,7 @@ export default function Home() {
           <div className="privacy-column privacy-column-public">
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
               <span style={{ fontSize: '16px' }}>🌐</span>
-              <div style={{ fontWeight: 700, fontSize: '13px', color: '#6ee7b7' }}>
+              <div style={{ fontWeight: 700, fontSize: '13px', color: '#2eb87e' }}>
                 Midnight Preprod Ledger
               </div>
             </div>
@@ -403,7 +403,7 @@ export default function Home() {
               <div
                 className="mono"
                 style={{
-                  color: '#60a5fa',
+                  color: '#85D1DB',
                   wordBreak: 'break-all',
                   fontSize: '12px',
                   fontWeight: 500,
@@ -425,7 +425,7 @@ export default function Home() {
                 <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>
                   NETWORK TARGET
                 </div>
-                <div style={{ fontWeight: 700, color: '#60a5fa', marginTop: '3px' }}>
+                <div style={{ fontWeight: 700, color: '#85D1DB', marginTop: '3px' }}>
                   Midnight Preprod
                 </div>
               </div>
@@ -464,7 +464,7 @@ export default function Home() {
               }}
             >
               <span style={{ color: 'var(--text-muted)' }}>Public Data Leakage:</span>
-              <span style={{ color: '#34d399', fontWeight: 700 }}>0 bytes PHI / PII on-chain</span>
+              <span style={{ color: '#2eb87e', fontWeight: 700 }}>0 bytes PHI / PII on-chain</span>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>

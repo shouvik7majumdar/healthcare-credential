@@ -156,7 +156,7 @@ export default function LaceProbePage() {
         border: '1px solid #1e293b',
       }}
     >
-      <h2 style={{ color: '#38bdf8', marginBottom: '8px' }}>⚡ MedProof Minimal Lace Connector Probe</h2>
+      <h2 style={{ color: '#85D1DB', marginBottom: '8px' }}>⚡ MedProof Minimal Lace Connector Probe</h2>
       <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '20px' }}>
         Isolated, pure single-click connector diagnostic testing direct <code>laceProvider.connect(&apos;preprod&apos;)</code>.
       </p>
@@ -206,7 +206,7 @@ export default function LaceProbePage() {
           <div><strong>Provider ID:</strong> {providerInfo.id}</div>
           <div>
             <strong>Status:</strong>{' '}
-            <span style={{ color: status === 'CONNECTED' ? '#4ade80' : status === 'ERROR' ? '#f87171' : '#38bdf8' }}>
+            <span style={{ color: status === 'CONNECTED' ? '#4ade80' : status === 'ERROR' ? '#f87171' : '#85D1DB' }}>
               {status}
             </span>
           </div>

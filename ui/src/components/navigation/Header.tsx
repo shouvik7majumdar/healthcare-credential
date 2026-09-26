@@ -125,7 +125,7 @@ export function Header() {
               fontWeight: 800,
               color: '#ffffff',
               fontSize: '18px',
-              boxShadow: '0 0 16px rgba(37, 99, 235, 0.35)',
+              boxShadow: '0 0 16px rgba(133, 209, 219, 0.25)',
             }}
           >
             M
@@ -177,10 +177,10 @@ export function Header() {
                   borderRadius: '6px',
                   fontSize: '13px',
                   fontWeight: isActive ? 600 : 500,
-                  color: isActive ? '#60a5fa' : 'var(--text-secondary)',
-                  background: isActive ? 'rgba(37, 99, 235, 0.14)' : 'transparent',
+                  color: isActive ? '#85D1DB' : 'var(--text-secondary)',
+                  background: isActive ? 'rgba(133, 209, 219, 0.12)' : 'transparent',
                   border: isActive
-                    ? '1px solid rgba(59, 130, 246, 0.32)'
+                    ? '1px solid rgba(133, 209, 219, 0.28)'
                     : '1px solid transparent',
                   textDecoration: 'none',
                   transition: 'all 0.15s ease',
@@ -288,7 +288,7 @@ export function Header() {
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: '#60a5fa',
+                        color: '#85D1DB',
                         cursor: 'pointer',
                         fontSize: '12px',
                         padding: 0,
@@ -379,10 +379,10 @@ export function Header() {
                   borderRadius: '6px',
                   fontSize: '14px',
                   fontWeight: isActive ? 600 : 400,
-                  color: isActive ? '#60a5fa' : 'var(--text-secondary)',
-                  background: isActive ? 'rgba(37, 99, 235, 0.14)' : 'transparent',
+                  color: isActive ? '#85D1DB' : 'var(--text-secondary)',
+                  background: isActive ? 'rgba(133, 209, 219, 0.12)' : 'transparent',
                   border: isActive
-                    ? '1px solid rgba(59, 130, 246, 0.3)'
+                    ? '1px solid rgba(133, 209, 219, 0.28)'
                     : '1px solid transparent',
                   textDecoration: 'none',
                 }}
