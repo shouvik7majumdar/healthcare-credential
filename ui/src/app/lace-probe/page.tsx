@@ -151,13 +151,13 @@ export default function LaceProbePage() {
         padding: '24px',
         fontFamily: 'monospace',
         color: '#e2e8f0',
-        background: '#0a0f1d',
+        background: '#FFFFFF',
         borderRadius: '12px',
-        border: '1px solid #1e293b',
+        border: '1px solid var(--border-card)',
       }}
     >
       <h2 style={{ color: '#85D1DB', marginBottom: '8px' }}>⚡ MedProof Minimal Lace Connector Probe</h2>
-      <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '20px' }}>
+      <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '20px' }}>
         Isolated, pure single-click connector diagnostic testing direct <code>laceProvider.connect(&apos;preprod&apos;)</code>.
       </p>
 
@@ -166,15 +166,15 @@ export default function LaceProbePage() {
           onClick={handleConnectClick}
           disabled={status === 'CONNECTING'}
           style={{
-            background: status === 'CONNECTING' ? '#0369a1' : '#0284c7',
-            color: '#ffffff',
-            border: 'none',
+            background: 'var(--color-ocean)',
+            color: 'var(--text-on-ocean)',
+            border: '1px solid #5AB5C4',
             padding: '12px 24px',
             fontSize: '15px',
             fontWeight: 700,
             borderRadius: '8px',
             cursor: status === 'CONNECTING' ? 'not-allowed' : 'pointer',
-            boxShadow: '0 0 15px rgba(2, 132, 199, 0.4)',
+            boxShadow: '0 4px 14px rgba(133, 209, 219, 0.45)',
           }}
         >
           {status === 'CONNECTING' ? '⏳ Connecting to Lace...' : 'Connect Midnight Lace'}
@@ -200,7 +200,7 @@ export default function LaceProbePage() {
       </div>
 
       {providerInfo && (
-        <div style={{ background: '#0f172a', padding: '12px', borderRadius: '8px', marginBottom: '16px', border: '1px solid #334155' }}>
+        <div style={{ background: '#F8FEFD', padding: '12px', borderRadius: '8px', marginBottom: '16px', border: '1px solid var(--border-card)' }}>
           <div><strong>Provider:</strong> {providerInfo.name}</div>
           <div><strong>API Version:</strong> {providerInfo.apiVersion}</div>
           <div><strong>Provider ID:</strong> {providerInfo.id}</div>
@@ -214,7 +214,7 @@ export default function LaceProbePage() {
       )}
 
       {addresses.unshielded && (
-        <div style={{ background: '#064e3b', padding: '14px', borderRadius: '8px', marginBottom: '16px', color: '#a7f3d0' }}>
+        <div style={{ background: '#DCFCE7', padding: '14px', borderRadius: '8px', marginBottom: '16px', color: '#064E3B' }}>
           <div style={{ fontWeight: 700, marginBottom: '6px' }}>🎉 Genuine Midnight Wallet Connected:</div>
           <div style={{ wordBreak: 'break-all', fontSize: '13px' }}><strong>Unshielded:</strong> {addresses.unshielded}</div>
           {addresses.shielded && (
@@ -225,7 +225,7 @@ export default function LaceProbePage() {
         </div>
       )}
 
-      <div style={{ background: '#020617', padding: '12px', borderRadius: '8px', border: '1px solid #1e293b' }}>
+      <div style={{ background: '#F0FBF9', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-card)' }}>
         <div style={{ fontWeight: 700, color: '#64748b', marginBottom: '8px' }}>Diagnostic Execution Log:</div>
         {logs.length === 0 ? (
           <div style={{ color: '#475569' }}>Click &quot;Connect Midnight Lace&quot; above to begin diagnostic probe...</div>

@@ -105,7 +105,7 @@ export default function PatientVaultPage() {
             <span>Active &amp; Valid</span>
             <span>✅</span>
           </div>
-          <div className="metric-value" style={{ color: '#2eb87e' }}>{activeCount}</div>
+          <div className="metric-value" style={{ color: '#064E3B' }}>{activeCount}</div>
           <div className="metric-meta">Satisfies ZK Circuits</div>
         </div>
 
@@ -136,7 +136,7 @@ export default function PatientVaultPage() {
             <span>On-Chain Leakage</span>
             <span>🛡️</span>
           </div>
-          <div className="metric-value" style={{ color: '#00f2fe', fontSize: '24px' }}>0 Bytes</div>
+          <div className="metric-value" style={{ color: 'var(--color-ocean-dark)', fontSize: '24px' }}>0 Bytes</div>
           <div className="metric-meta">Mathematical Privacy</div>
         </div>
       </div>
@@ -171,12 +171,12 @@ export default function PatientVaultPage() {
           <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border-subtle)' }}>
             <div
               style={{
-                background: 'rgba(0, 242, 254, 0.06)',
-                border: '1px solid rgba(0, 242, 254, 0.2)',
+                background: '#E8FBF7',
+                border: '1px solid var(--color-ocean)',
                 borderRadius: '8px',
                 padding: '12px 14px',
                 fontSize: '12px',
-                color: '#e0f2fe',
+                color: 'var(--text-primary)',
                 marginBottom: '16px',
                 lineHeight: 1.5,
               }}
@@ -415,7 +415,7 @@ export default function PatientVaultPage() {
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(0,0,0,0.8)',
+          background: 'rgba(9, 38, 44, 0.55)',
           backdropFilter: 'blur(8px)',
           display: 'flex',
           alignItems: 'center',
@@ -478,7 +478,7 @@ export default function PatientVaultPage() {
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(0,0,0,0.8)',
+          background: 'rgba(9, 38, 44, 0.55)',
           backdropFilter: 'blur(8px)',
           display: 'flex',
           alignItems: 'center',
@@ -511,11 +511,11 @@ export default function PatientVaultPage() {
             </p>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-              <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '8px', padding: '12px', fontSize: '12px' }}>
-                <div style={{ fontWeight: 600, color: '#fca5a5', marginBottom: '8px' }}>
+              <div style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '8px', padding: '12px', fontSize: '12px' }}>
+                <div style={{ fontWeight: 600, color: '#991B1B', marginBottom: '8px' }}>
                   🔒 Off-Chain Private Witness (Never on Chain)
                 </div>
-                <ul style={{ listStyle: 'none', paddingLeft: 0, display: 'flex', flexDirection: 'column', gap: '6px', color: '#e0e7ff' }}>
+                <ul style={{ listStyle: 'none', paddingLeft: 0, display: 'flex', flexDirection: 'column', gap: '6px', color: 'var(--text-secondary)' }}>
                   <li>• Patient Name: {selectedCredForPrivacy.patientName}</li>
                   <li>• Medication: {selectedCredForPrivacy.medication}</li>
                   <li>• Dosage: {selectedCredForPrivacy.dosage}</li>
@@ -524,11 +524,11 @@ export default function PatientVaultPage() {
                 </ul>
               </div>
 
-              <div style={{ background: 'rgba(182, 242, 209, 0.08)', border: '1px solid rgba(52, 211, 153, 0.25)', borderRadius: '8px', padding: '12px', fontSize: '12px' }}>
-                <div style={{ fontWeight: 600, color: '#2eb87e', marginBottom: '8px' }}>
+              <div style={{ background: '#ECFDF5', border: '1px solid #6EE7B7', borderRadius: '8px', padding: '12px', fontSize: '12px' }}>
+                <div style={{ fontWeight: 600, color: '#064E3B', marginBottom: '8px' }}>
                   🌐 Public Ledger Record (Midnight Preprod)
                 </div>
-                <ul style={{ listStyle: 'none', paddingLeft: 0, display: 'flex', flexDirection: 'column', gap: '6px', color: '#e0e7ff' }}>
+                <ul style={{ listStyle: 'none', paddingLeft: 0, display: 'flex', flexDirection: 'column', gap: '6px', color: 'var(--text-secondary)' }}>
                   <li>• Commitment: {formatShortHash(selectedCredForPrivacy.commitment)}</li>
                   <li>• Provider Commitment: {formatShortHash(selectedCredForPrivacy.issuerProviderCommitment)}</li>
                   <li>• Category Hash: persistentHash({selectedCredForPrivacy.category})</li>

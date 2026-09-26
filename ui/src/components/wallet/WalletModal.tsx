@@ -89,7 +89,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
     <div style={{
       position: 'fixed',
       inset: 0,
-      background: 'rgba(0, 0, 0, 0.75)',
+      background: 'rgba(9, 38, 44, 0.55)',
       backdropFilter: 'blur(8px)',
       display: 'flex',
       alignItems: 'center',
@@ -134,7 +134,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
               width: '100%',
               padding: '8px 12px',
               borderRadius: '6px',
-              background: 'var(--bg-input)',
+              background: '#FFFFFF',
               border: '1px solid var(--border-subtle)',
               color: 'var(--text-primary)',
               fontSize: '13px',
@@ -152,7 +152,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
 
         {/* Provider Detection Status */}
         <div style={{
-          background: 'var(--bg-input)',
+          background: '#FFFFFF',
           border: '1px solid var(--border-subtle)',
           borderRadius: '8px',
           padding: '14px',
@@ -185,8 +185,8 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
               fontSize: '11px',
               color: 'var(--text-secondary)',
             }}>
-              <div>API Version: <span className="mono" style={{ color: 'var(--accent-teal)' }}>{selectedWallet.apiVersion}</span></div>
-              <div>Method: <span className="mono" style={{ color: 'var(--accent-teal)' }}>{selectedWallet.supportsConnect ? 'connect()' : 'enable()'}</span></div>
+              <div>API Version: <span className="mono" style={{ color: 'var(--color-ocean-dark)' }}>{selectedWallet.apiVersion}</span></div>
+              <div>Method: <span className="mono" style={{ color: 'var(--color-ocean-dark)' }}>{selectedWallet.supportsConnect ? 'connect()' : 'enable()'}</span></div>
               <div style={{ gridColumn: 'span 2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 Provider ID: <span className="mono" style={{ color: 'var(--text-muted)' }}>{selectedWallet.id}</span>
               </div>
@@ -220,7 +220,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
               </span>
             </div>
 
-            <p style={{ fontSize: '12px', color: '#e0f2fe', marginBottom: '12px', lineHeight: 1.4 }}>
+            <p style={{ fontSize: '12px', color: '#042025', marginBottom: '12px', lineHeight: 1.4 }}>
               MedProof sent an authorization request to Midnight Lace. Because Chrome extensions run securely in their own sandbox, you must approve the connection inside Lace:
             </p>
 
@@ -391,16 +391,16 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
         {/* Waiting for Lace Banner */}
         {(wallet.status === 'CONNECTING' || wallet.status === 'WAITING_FOR_LACE') && (
           <div style={{
-            background: 'rgba(133, 209, 219, 0.08)',
-            border: '1px solid rgba(133, 209, 219, 0.28)',
+            background: '#E0F7FA',
+            border: '1px solid var(--color-ocean)',
             borderRadius: '8px',
             padding: '12px 14px',
             marginBottom: '16px',
             fontSize: '12px',
-            color: '#e0f2fe',
+            color: '#042025',
             lineHeight: 1.5,
           }}>
-            <div style={{ fontWeight: 600, color: 'var(--accent-teal)', marginBottom: '4px' }}>
+            <div style={{ fontWeight: 600, color: 'var(--color-ocean-dark)', marginBottom: '4px' }}>
               ⏳ Awaiting Authorization in Midnight Lace
             </div>
             <div>
@@ -491,7 +491,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
           {showDiagnostics && (
             <div style={{
               marginTop: '10px',
-              background: 'rgba(0, 0, 0, 0.4)',
+              background: '#F0FBF9',
               borderRadius: '6px',
               padding: '12px',
               fontSize: '11px',
@@ -499,7 +499,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
               color: 'var(--text-secondary)',
               lineHeight: 1.5,
             }}>
-              <div style={{ marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px solid var(--border-card)' }}>
                 <div>window.midnight present: <span style={{ color: diagnostics.windowMidnightPresent ? '#34d399' : '#f87171' }}>{diagnostics.windowMidnightPresent ? 'YES' : 'NO'}</span></div>
                 <div>Discovered Providers: <span style={{ color: '#85D1DB' }}>{discoveredWallets.length}</span></div>
                 <div>Injected Keys: <span style={{ color: 'var(--text-muted)' }}>{diagnostics.providerKeys.length > 0 ? diagnostics.providerKeys.join(', ') : '(none)'}</span></div>
@@ -508,7 +508,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
 
               {/* Step 7 Direct Test Trigger */}
               <div style={{ marginTop: '6px' }}>
-                <div style={{ fontWeight: 600, color: '#e0f2fe', marginBottom: '6px' }}>
+                <div style={{ fontWeight: 600, color: '#042025', marginBottom: '6px' }}>
                   Step 7: Direct Provider connect() Test:
                 </div>
                 <button

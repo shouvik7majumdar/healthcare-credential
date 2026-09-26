@@ -202,12 +202,12 @@ export default function ConsentCenterPage() {
       {/* Live Transaction Status Banner (When Processing or Pending Approval) */}
       {isProcessing && txStatus && (
         <div style={{
-          background: txStatus.stage === 'waiting_approval' ? 'rgba(245, 158, 11, 0.15)' : 'var(--bg-card)',
+          background: txStatus.stage === 'waiting_approval' ? '#FEF3C7' : 'var(--bg-card)',
           border: `1px solid ${txStatus.stage === 'waiting_approval' ? 'var(--accent-amber)' : 'var(--accent-teal)'}`,
           borderRadius: '10px',
           padding: '20px',
           marginBottom: '24px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+          boxShadow: '0 4px 20px rgba(133, 209, 219, 0.25)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -239,7 +239,7 @@ export default function ConsentCenterPage() {
 
           {txStatus.stage === 'waiting_approval' && (
             <div style={{
-              background: 'rgba(0,0,0,0.3)',
+              background: '#F0FBF9',
               padding: '12px',
               borderRadius: '6px',
               fontSize: '13px',
@@ -450,7 +450,7 @@ export default function ConsentCenterPage() {
                     gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
                     gap: '12px',
                     padding: '12px',
-                    background: 'rgba(0, 0, 0, 0.2)',
+                    background: '#F0FBF9',
                     borderRadius: '6px',
                     fontSize: '12px'
                   }}>
@@ -656,7 +656,7 @@ export default function ConsentCenterPage() {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          backgroundColor: 'rgba(9, 38, 44, 0.55)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',

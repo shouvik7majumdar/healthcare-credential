@@ -267,7 +267,7 @@ export default function ProviderPortalPage() {
           </div>
           <div className="metric-sub" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
             <span className="metric-badge badge-network">{isConnected ? 'Lace Connected' : 'Lace Unlinked'}</span>
-            <span className="metric-badge" style={{ background: isProviderAuthorized ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)', color: isProviderAuthorized ? 'var(--accent-emerald)' : 'var(--text-muted)', fontSize: '11px', padding: '2px 6px', borderRadius: '4px' }}>
+            <span className="metric-badge" style={{ background: isProviderAuthorized ? '#DCFCE7' : '#FEE2E2', color: isProviderAuthorized ? 'var(--accent-emerald)' : 'var(--text-muted)', fontSize: '11px', padding: '2px 6px', borderRadius: '4px' }}>
               {isProviderAuthorized ? 'Provider Authorized on Midnight Preprod' : 'Not Authorized On-Chain'}
             </span>
           </div>
@@ -316,7 +316,7 @@ export default function ProviderPortalPage() {
           marginBottom: '20px',
           padding: '16px 20px',
           borderRadius: '8px',
-          background: issueStatus.stage === 'confirmed' ? 'rgba(16, 185, 129, 0.15)' : issueStatus.stage === 'failed' || issueStatus.stage === 'rejected' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(133, 209, 219, 0.14)',
+          background: issueStatus.stage === 'confirmed' ? '#ECFDF5' : issueStatus.stage === 'failed' || issueStatus.stage === 'rejected' ? '#FEF2F2' : '#E0F7FA',
           border: `1px solid ${issueStatus.stage === 'confirmed' ? 'var(--accent-emerald)' : issueStatus.stage === 'failed' || issueStatus.stage === 'rejected' ? 'var(--accent-rose)' : 'var(--accent-blue)'}`,
           fontSize: '13px'
         }}>
@@ -355,7 +355,7 @@ export default function ProviderPortalPage() {
           marginBottom: '20px',
           padding: '14px 18px',
           borderRadius: '8px',
-          background: feedback.type === 'success' ? 'rgba(16, 185, 129, 0.12)' : feedback.type === 'error' ? 'rgba(239, 68, 68, 0.12)' : 'rgba(133, 209, 219, 0.11)',
+          background: feedback.type === 'success' ? '#ECFDF5' : feedback.type === 'error' ? '#FEF2F2' : '#E0F7FA',
           border: `1px solid ${feedback.type === 'success' ? 'var(--accent-emerald)' : feedback.type === 'error' ? 'var(--accent-rose)' : 'var(--accent-blue)'}`,
           color: 'var(--text-primary)',
           fontSize: '13px'
@@ -425,7 +425,7 @@ export default function ProviderPortalPage() {
           </div>
 
           {/* Mode Selector */}
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', padding: '12px', background: 'var(--bg-input)', borderRadius: '8px' }}>
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', padding: '12px', background: '#F8FEFD', borderRadius: '8px' }}>
             <button
               type="button"
               className={`btn ${txMode === 'preprod' ? 'btn-primary' : 'btn-secondary'}`}
@@ -623,7 +623,7 @@ export default function ProviderPortalPage() {
                 <div
                   key={cred.id}
                   style={{
-                    background: 'var(--bg-input)',
+                    background: '#F8FEFD',
                     border: '1px solid var(--border-subtle)',
                     borderRadius: '10px',
                     padding: '18px',
@@ -692,7 +692,7 @@ export default function ProviderPortalPage() {
                 <div
                   key={cred.id}
                   style={{
-                    background: 'var(--bg-input)',
+                    background: '#F8FEFD',
                     border: '1px solid rgba(239, 68, 68, 0.3)',
                     borderRadius: '10px',
                     padding: '18px',
@@ -737,7 +737,7 @@ export default function ProviderPortalPage() {
               <code>authorizedProviders</code> map. Furthermore, only the original issuing provider (or root contract administrator) possesses
               authorization to revoke a credential:
             </p>
-            <div style={{ background: 'var(--bg-input)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-subtle)', marginBottom: '16px' }}>
+            <div style={{ background: '#F8FEFD', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-subtle)', marginBottom: '16px' }}>
               <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Connected Provider Public Address (Lace):</div>
               <div className="mono" style={{ fontSize: '13px', color: 'var(--accent-teal)', wordBreak: 'break-all' }}>
                 {wallet.address || 'Wallet not connected — Connect Lace in the top navigation bar'}
@@ -784,7 +784,7 @@ export default function ProviderPortalPage() {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          backgroundColor: 'rgba(9, 38, 44, 0.55)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -799,7 +799,7 @@ export default function ProviderPortalPage() {
             </div>
             <div style={{ margin: '16px 0', fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
               <p>Are you sure you want to revoke this credential? Once revoked on-chain, all zero-knowledge verifications for this commitment will be permanently rejected.</p>
-              <div style={{ background: 'var(--bg-input)', padding: '12px', borderRadius: '6px', fontSize: '12px' }}>
+              <div style={{ background: '#F8FEFD', padding: '12px', borderRadius: '6px', fontSize: '12px' }}>
                 {confirmRevoke.credential ? (
                   <>
                     <div><strong>Medication:</strong> {confirmRevoke.credential.medication}</div>

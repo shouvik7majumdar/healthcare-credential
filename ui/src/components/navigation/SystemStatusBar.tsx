@@ -43,7 +43,7 @@ export function SystemStatusBar() {
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <span className="status-dot status-dot-green" title="Active Network" />
           <span style={{ color: 'var(--text-muted)', marginRight: '4px' }}>NETWORK:</span>
-          <span style={{ color: '#85D1DB', fontWeight: 600 }}>{systemStatus.network}</span>
+          <span style={{ color: 'var(--color-ocean-dark)', fontWeight: 700 }}>{systemStatus.network}</span>
         </div>
 
         {/* Contract Address */}
@@ -58,6 +58,7 @@ export function SystemStatusBar() {
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-mono)',
               fontSize: '11px',
+              fontWeight: 600,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -66,7 +67,7 @@ export function SystemStatusBar() {
             }}
           >
             <span>{shortAddr(systemStatus.contractAddress)}</span>
-            <span style={{ color: copied ? '#34d399' : 'var(--text-muted)', fontSize: '10px' }}>
+            <span style={{ color: copied ? '#059669' : 'var(--text-muted)', fontSize: '10px' }}>
               {copied ? '✓ Copied' : '📋'}
             </span>
           </button>
@@ -79,7 +80,7 @@ export function SystemStatusBar() {
             title={wallet.status === 'CONNECTED' ? 'Lace Connected' : 'Lace Disconnected'}
           />
           <span style={{ color: 'var(--text-muted)', marginRight: '4px' }}>LACE:</span>
-          <span style={{ color: wallet.status === 'CONNECTED' ? '#34d399' : '#fbbf24', fontWeight: 500 }}>
+          <span style={{ color: wallet.status === 'CONNECTED' ? '#059669' : '#d97706', fontWeight: 600 }}>
             {wallet.status === 'CONNECTED' ? shortAddr(wallet.address) : 'Disconnected'}
           </span>
         </div>
@@ -91,7 +92,7 @@ export function SystemStatusBar() {
             title="GraphQL Preprod Indexer"
           />
           <span style={{ color: 'var(--text-muted)', marginRight: '4px' }}>INDEXER:</span>
-          <span style={{ color: systemStatus.indexerOnline ? '#34d399' : 'var(--text-muted)' }}>
+          <span style={{ color: systemStatus.indexerOnline ? '#059669' : 'var(--text-muted)', fontWeight: 600 }}>
             {systemStatus.indexerOnline ? 'Online' : 'Unreachable'}
           </span>
         </div>
@@ -103,7 +104,7 @@ export function SystemStatusBar() {
             title="Midnight Local Proof Server (:6300)"
           />
           <span style={{ color: 'var(--text-muted)', marginRight: '4px' }}>PROOF SERVER:</span>
-          <span style={{ color: systemStatus.proofServerOnline ? '#34d399' : '#fbbf24' }}>
+          <span style={{ color: systemStatus.proofServerOnline ? '#059669' : '#d97706', fontWeight: 600 }}>
             {systemStatus.proofServerOnline ? 'Ready (:6300)' : 'Offline / Standby'}
           </span>
         </div>
@@ -119,12 +120,12 @@ export function SystemStatusBar() {
           disabled={isRefreshing}
           title="Re-check network and service endpoints"
           style={{
-            background: 'rgba(255, 255, 255, 0.05)',
-            border: '1px solid var(--border-subtle)',
+            background: '#F0FBF9',
+            border: '1px solid var(--border-card)',
             borderRadius: '4px',
             color: 'var(--text-secondary)',
             fontSize: '10px',
-            padding: '2px 6px',
+            padding: '2px 8px',
             cursor: 'pointer',
           }}
         >

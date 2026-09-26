@@ -81,77 +81,66 @@ export function Header() {
   return (
     <header
       style={{
-        borderBottom: '1px solid var(--border-subtle)',
-        background: 'rgba(6, 11, 24, 0.94)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
         position: 'sticky',
         top: 0,
         zIndex: 100,
-        padding: '0 20px',
+        background: 'rgba(255, 255, 255, 0.92)',
+        backdropFilter: 'blur(20px)',
+        borderBottom: '1px solid var(--border-card)',
+        padding: '0 24px',
+        boxShadow: '0 2px 12px rgba(133, 209, 219, 0.18)',
       }}
     >
       <div
         style={{
-          maxWidth: '1280px',
+          maxWidth: '1200px',
           margin: '0 auto',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          height: '68px',
-          gap: '12px',
+          height: '64px',
         }}
       >
-        {/* Brand */}
+        {/* Brand Logo */}
         <Link
           href="/"
           style={{
-            textDecoration: 'none',
             display: 'flex',
             alignItems: 'center',
             gap: '10px',
+            textDecoration: 'none',
             flexShrink: 0,
           }}
         >
           <div
             style={{
-              width: '34px',
-              height: '34px',
-              borderRadius: '9px',
-              background: 'linear-gradient(135deg, #2563eb 0%, #4f46e5 100%)',
+              width: '36px',
+              height: '36px',
+              borderRadius: '10px',
+              background: 'linear-gradient(135deg, #85D1DB 0%, #B6F2D1 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontWeight: 800,
-              color: '#ffffff',
               fontSize: '18px',
-              boxShadow: '0 0 16px rgba(133, 209, 219, 0.25)',
+              boxShadow: '0 2px 8px rgba(133, 209, 219, 0.40)',
             }}
           >
-            M
+            🛡️
           </div>
           <div>
             <div
               style={{
+                fontSize: '17px',
                 fontWeight: 800,
-                fontSize: '16px',
                 color: 'var(--text-primary)',
-                letterSpacing: '0.6px',
                 lineHeight: 1.1,
+                letterSpacing: '-0.3px',
               }}
             >
-              MED<span className="gradient-text">PROOF</span>
+              Med<span style={{ color: 'var(--color-ocean-dark)' }}>Proof</span>
             </div>
-            <div
-              style={{
-                fontSize: '10px',
-                color: 'var(--text-muted)',
-                letterSpacing: '0.8px',
-                textTransform: 'uppercase',
-                fontWeight: 600,
-              }}
-            >
-              Confidential Exchange
+            <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 500 }}>
+              Zero-Knowledge Healthcare
             </div>
           </div>
         </Link>
@@ -159,12 +148,7 @@ export function Header() {
         {/* Desktop Navigation */}
         <nav
           className="desktop-nav"
-          style={{
-            display: 'flex',
-            gap: '4px',
-            alignItems: 'center',
-            flexWrap: 'nowrap',
-          }}
+          style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
         >
           {navLinks.map((link) => {
             const isActive = pathname === link.href;
@@ -173,18 +157,19 @@ export function Header() {
                 key={link.href}
                 href={link.href}
                 style={{
-                  padding: '7px 11px',
-                  borderRadius: '6px',
+                  padding: '7px 12px',
+                  borderRadius: '8px',
                   fontSize: '13px',
-                  fontWeight: isActive ? 600 : 500,
-                  color: isActive ? '#85D1DB' : 'var(--text-secondary)',
-                  background: isActive ? 'rgba(133, 209, 219, 0.12)' : 'transparent',
+                  fontWeight: isActive ? 700 : 500,
+                  color: isActive ? '#042025' : 'var(--text-secondary)',
+                  background: isActive ? '#85D1DB' : 'transparent',
                   border: isActive
-                    ? '1px solid rgba(133, 209, 219, 0.28)'
+                    ? '1px solid #5AB5C4'
                     : '1px solid transparent',
                   textDecoration: 'none',
                   transition: 'all 0.15s ease',
                   whiteSpace: 'nowrap',
+                  boxShadow: isActive ? '0 2px 8px rgba(133, 209, 219, 0.35)' : 'none',
                 }}
               >
                 {link.label}
@@ -204,7 +189,7 @@ export function Header() {
               {wallet.address ? (
                 <div
                   style={{
-                    background: 'var(--bg-surface-elevated)',
+                    background: '#E8FBF7',
                     border: '1px solid var(--border-card)',
                     padding: '5px 10px',
                     borderRadius: '8px',
@@ -215,7 +200,7 @@ export function Header() {
                 >
                   <span
                     className="mono"
-                    style={{ color: 'var(--text-primary)', fontSize: '12px' }}
+                    style={{ color: 'var(--text-primary)', fontSize: '12px', fontWeight: 600 }}
                     title={wallet.address}
                   >
                     {formatAddress(wallet.address)}
@@ -226,7 +211,7 @@ export function Header() {
                     style={{
                       background: 'none',
                       border: 'none',
-                      color: copied ? '#34d399' : 'var(--text-muted)',
+                      color: copied ? '#059669' : 'var(--text-muted)',
                       cursor: 'pointer',
                       fontSize: '12px',
                       padding: '2px 4px',
@@ -255,7 +240,7 @@ export function Header() {
               ) : (
                 <div
                   style={{
-                    background: 'var(--bg-surface-elevated)',
+                    background: '#E8FBF7',
                     border: '1px solid var(--border-subtle)',
                     padding: '4px 10px',
                     borderRadius: '8px',
@@ -271,7 +256,7 @@ export function Header() {
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: '#fbbf24',
+                        color: '#d97706',
                         cursor: 'pointer',
                         fontSize: '12px',
                         padding: 0,
@@ -288,7 +273,7 @@ export function Header() {
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: '#85D1DB',
+                        color: 'var(--color-ocean-dark)',
                         cursor: 'pointer',
                         fontSize: '12px',
                         padding: 0,
@@ -321,16 +306,16 @@ export function Header() {
               onClick={handleConnectClick}
               style={{
                 fontSize: '12px',
-                padding: '7px 14px',
+                padding: '8px 16px',
                 background:
                   wallet.status === 'UNAVAILABLE'
-                    ? 'rgba(239, 68, 68, 0.16)'
+                    ? '#FEE2E2'
                     : undefined,
                 border:
                   wallet.status === 'UNAVAILABLE'
-                    ? '1px solid rgba(239, 68, 68, 0.35)'
+                    ? '1px solid #FCA5A5'
                     : undefined,
-                color: wallet.status === 'UNAVAILABLE' ? '#fca5a5' : undefined,
+                color: wallet.status === 'UNAVAILABLE' ? '#991B1B' : undefined,
               }}
             >
               {wallet.status === 'CONNECTING'
@@ -360,11 +345,12 @@ export function Header() {
       {mobileMenuOpen && (
         <div
           style={{
-            borderTop: '1px solid var(--border-subtle)',
+            borderTop: '1px solid var(--border-card)',
             padding: '12px 0 16px',
             display: 'flex',
             flexDirection: 'column',
             gap: '6px',
+            background: 'rgba(255, 255, 255, 0.98)',
           }}
         >
           {navLinks.map((link) => {
@@ -378,11 +364,11 @@ export function Header() {
                   padding: '9px 14px',
                   borderRadius: '6px',
                   fontSize: '14px',
-                  fontWeight: isActive ? 600 : 400,
-                  color: isActive ? '#85D1DB' : 'var(--text-secondary)',
-                  background: isActive ? 'rgba(133, 209, 219, 0.12)' : 'transparent',
+                  fontWeight: isActive ? 700 : 500,
+                  color: isActive ? '#042025' : 'var(--text-secondary)',
+                  background: isActive ? '#85D1DB' : 'transparent',
                   border: isActive
-                    ? '1px solid rgba(133, 209, 219, 0.28)'
+                    ? '1px solid #5AB5C4'
                     : '1px solid transparent',
                   textDecoration: 'none',
                 }}

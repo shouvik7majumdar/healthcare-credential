@@ -58,8 +58,18 @@ export default function Home() {
 
   return (
     <div className="page-container">
-      {/* Clinical Hero Header with Atmospheric Deep Sapphire Lighting */}
-      <section style={{ textAlign: 'center', marginBottom: '44px', paddingTop: '16px' }}>
+      {/* Charming Seaside Hero Section */}
+      <section
+        style={{
+          textAlign: 'center',
+          marginBottom: '44px',
+          padding: '40px 24px 36px',
+          background: 'linear-gradient(135deg, #C9FDF2 0%, #E3F8F5 50%, #B3EBF2 100%)',
+          borderRadius: '20px',
+          border: '1px solid #85D1DB',
+          boxShadow: '0 8px 30px rgba(133, 209, 219, 0.25)',
+        }}
+      >
         <div
           style={{
             display: 'inline-flex',
@@ -70,24 +80,25 @@ export default function Home() {
             justifyContent: 'center',
           }}
         >
-          <span className="badge badge-indigo">
+          <span className="badge badge-mint">
             🛡️ Zero-Knowledge Healthcare Privacy
           </span>
           <span className="badge badge-emerald">
             ● Midnight Preprod Verified
           </span>
-          <span className="badge badge-blue">
+          <span className="badge badge-teal">
             🔐 9 Compact zk-Circuits
           </span>
         </div>
 
         <h1
           style={{
-            fontSize: '42px',
+            fontSize: '40px',
             fontWeight: 800,
             lineHeight: 1.18,
             marginBottom: '16px',
             letterSpacing: '-0.5px',
+            color: 'var(--text-primary)',
           }}
         >
           Your healthcare credentials.<br />
@@ -101,6 +112,7 @@ export default function Home() {
             color: 'var(--text-secondary)',
             fontSize: '16px',
             lineHeight: 1.6,
+            fontWeight: 500,
           }}
         >
           MedProof enables authenticated prescriptions, clinical records, and bilateral patient consent without exposing diagnoses, dosages, or personal identities to the public blockchain.
@@ -114,224 +126,92 @@ export default function Home() {
             flexWrap: 'wrap',
           }}
         >
-          <Link href="/patient" className="btn btn-primary">
+          <Link href="/patient" className="btn btn-primary btn-lg">
             🗂️ Access Patient Vault
           </Link>
-          <Link href="/provider" className="btn btn-secondary">
-            🏥 Healthcare Provider Portal
+          <Link href="/provider" className="btn btn-secondary btn-lg">
+            👨‍⚕️ Provider Issuance Portal
           </Link>
-          <Link href="/verifier" className="btn btn-secondary">
-            🔍 Verifier Workstation
-          </Link>
-          <Link href="/consent" className="btn btn-secondary">
-            🛡️ Consent Center
+          <Link href="/verifier" className="btn btn-mint btn-lg">
+            🔍 Zero-Knowledge Verifier
           </Link>
         </div>
       </section>
 
-      {/* Section: Operational Metrics with Explicit Truthful Provenance */}
-      <section style={{ marginBottom: '36px' }}>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '16px',
-            flexWrap: 'wrap',
-            gap: '8px',
-          }}
-        >
-          <div>
-            <h2
-              style={{
-                fontSize: '18px',
-                fontWeight: 700,
-                color: 'var(--text-primary)',
-                letterSpacing: '0.2px',
-              }}
-            >
-              Healthcare Operations Overview
-            </h2>
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-              Real-time cryptographic audit trail of active session state
-            </p>
+      {/* 5 High-Impact Metric Cards */}
+      <section className="metric-grid-5">
+        <div className="metric-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="metric-label">Active Credentials</span>
+            <span className="badge badge-teal">Vault</span>
           </div>
-          <span className="badge badge-gray" style={{ fontSize: '11px' }}>
-            Data Scope: {wallet.status === 'CONNECTED' ? 'Connected Patient Session' : 'Local Client Session'}
-          </span>
+          <div className="metric-value">{activeCredentials}</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+            of {totalVaultRegistrations} total issued
+          </div>
         </div>
 
-        <div className="metric-grid-5">
-          {/* 1. Vault Records */}
-          <div className="metric-card">
-            <div className="metric-label">
-              <span>Vault Records</span>
-              <span title="Cryptographic credentials in client vault">🗂️</span>
-            </div>
-            <div className="metric-value">{totalVaultRegistrations}</div>
-            <div className="metric-meta">
-              <span style={{ color: '#85D1DB', fontWeight: 600 }}>My Vault</span>
-              <span>· Client Session</span>
-            </div>
+        <div className="metric-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="metric-label">Active Consents</span>
+            <span className="badge badge-mint">Bilateral</span>
           </div>
-
-          {/* 2. Active Credentials */}
-          <div className="metric-card">
-            <div className="metric-label">
-              <span>Active Credentials</span>
-              <span title="Valid & unrevoked credentials">✅</span>
-            </div>
-            <div className="metric-value" style={{ color: '#2eb87e' }}>
-              {activeCredentials}
-            </div>
-            <div className="metric-meta">
-              <span>issuedCredentials Map</span>
-            </div>
+          <div className="metric-value">{activeConsents}</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+            Encrypted dispensary grants
           </div>
+        </div>
 
-          {/* 3. Revoked Records */}
-          <div className="metric-card">
-            <div className="metric-label">
-              <span>Revoked Records</span>
-              <span title="Revoked on-chain commitments">🚫</span>
-            </div>
-            <div className="metric-value" style={{ color: '#f87171' }}>
-              {revokedCredentials}
-            </div>
-            <div className="metric-meta">
-              <span>revokedCredentials Map</span>
-            </div>
+        <div className="metric-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="metric-label">ZK Verifications</span>
+            <span className="badge badge-blue">Proofs</span>
           </div>
-
-          {/* 4. Active Consents */}
-          <div className="metric-card">
-            <div className="metric-label">
-              <span>Active Consents</span>
-              <span title="Authorized verifier consents">🛡️</span>
-            </div>
-            <div className="metric-value" style={{ color: '#B3EBF2' }}>
-              {activeConsents}
-            </div>
-            <div className="metric-meta">
-              <span>Bilateral Patient Keys</span>
-            </div>
+          <div className="metric-value">{sessionVerifications}</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+            Zero-knowledge validations
           </div>
+        </div>
 
-          {/* 5. Verifications */}
-          <div className="metric-card">
-            <div className="metric-label">
-              <span>ZK Verifications</span>
-              <span title="Verification attempts in current session">⚡</span>
-            </div>
-            <div className="metric-value" style={{ color: '#B3EBF2' }}>
-              {sessionVerifications}
-            </div>
-            <div className="metric-meta">
-              <span>Current Session</span>
-            </div>
+        <div className="metric-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="metric-label">Revocations</span>
+            <span className="badge badge-rose">Revoked</span>
+          </div>
+          <div className="metric-value">{revokedCredentials}</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+            On-chain nullified
+          </div>
+        </div>
+
+        <div className="metric-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="metric-label">Target Network</span>
+            <span className="badge badge-emerald">Live</span>
+          </div>
+          <div className="metric-value" style={{ fontSize: '20px', color: 'var(--color-ocean-dark)' }}>
+            {systemStatus.network}
+          </div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+            Midnight Preprod Testnet
           </div>
         </div>
       </section>
 
-      {/* Section: Selective Disclosure & Privacy Boundary Architecture */}
-      <section
-        className="glass-card"
-        style={{ marginBottom: '36px', background: 'rgba(10, 18, 42, 0.88)' }}
-      >
-        <div className="glass-card-header">
-          <div>
-            <h3 style={{ fontSize: '17px', fontWeight: 700, color: 'var(--text-primary)' }}>
-              Zero-Knowledge Privacy Boundary Architecture
-            </h3>
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-              How MedProof cryptographically segregates sensitive PHI from public on-chain state
-            </p>
-          </div>
-          <span className="badge badge-indigo">Poseidon SNARK Circuit</span>
-        </div>
-
-        <div className="privacy-boundary-container">
-          {/* Column 1: Client Private State */}
-          <div className="privacy-column privacy-column-private">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span style={{ fontSize: '16px' }}>🔒</span>
-              <div style={{ fontWeight: 700, fontSize: '13px', color: '#c7d2fe' }}>
-                Client Private Witness
-              </div>
-            </div>
-            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '12px' }}>
-              STRICTLY CLIENT-SIDE (NEVER SHARED)
-            </div>
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-              <li>• Patient 256-bit Secret Seed</li>
-              <li>• Medical Diagnoses &amp; Notes</li>
-              <li>• Drug Names &amp; Specific Dosages</li>
-              <li>• Cryptographic Nonces &amp; Salts</li>
-            </ul>
-          </div>
-
-          {/* Arrow 1 */}
-          <div className="privacy-arrow" style={{ textAlign: 'center', color: '#B3EBF2', fontSize: '20px', fontWeight: 700 }}>
-            →
-          </div>
-
-          {/* Column 2: Local ZK Prover */}
-          <div className="privacy-column privacy-column-proven">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span style={{ fontSize: '16px' }}>⚡</span>
-              <div style={{ fontWeight: 700, fontSize: '13px', color: '#85D1DB' }}>
-                Compact ZK Circuit
-              </div>
-            </div>
-            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '12px' }}>
-              PROOFS GENERATED LOCALLY (:6300)
-            </div>
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-              <li>• Proves Doctor Authorization</li>
-              <li>• Evaluates Active Patient Consent</li>
-              <li>• Validates Expiration &ge; Epoch</li>
-              <li>• Enforces Single-Use Nullifiers</li>
-            </ul>
-          </div>
-
-          {/* Arrow 2 */}
-          <div className="privacy-arrow" style={{ textAlign: 'center', color: '#2eb87e', fontSize: '20px', fontWeight: 700 }}>
-            →
-          </div>
-
-          {/* Column 3: Public Ledger */}
-          <div className="privacy-column privacy-column-public">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span style={{ fontSize: '16px' }}>🌐</span>
-              <div style={{ fontWeight: 700, fontSize: '13px', color: '#2eb87e' }}>
-                Midnight Preprod Ledger
-              </div>
-            </div>
-            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '12px' }}>
-              PUBLIC ON-CHAIN STATE (ZERO PHI)
-            </div>
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-              <li>• 7-Vector Poseidon Commitments</li>
-              <li>• Authorized Doctor Commitments</li>
-              <li>• Consumed Dispense Nullifiers</li>
-              <li>• 0 Bytes Sensitive Medical Data</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      {/* Grid: Recent Activity Feed + Protocol Status */}
-      <section className="grid-2" style={{ marginBottom: '36px' }}>
-        {/* Recent Session Activity Feed */}
+      {/* Main Content: Activity & Protocol Health */}
+      <section className="grid-2" style={{ marginBottom: '32px' }}>
+        {/* Live Session Activity Stream */}
         <div className="glass-card">
           <div className="glass-card-header">
             <div>
-              <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Recent Session Activity</h3>
-              <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+              <h3 style={{ fontSize: '17px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                Recent Session Activity
+              </h3>
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
                 Chronological client session log (credentials, consents, verifications)
               </p>
             </div>
-            <span className="badge badge-blue" style={{ fontSize: '11px' }}>
+            <span className="badge badge-teal" style={{ fontSize: '11px' }}>
               Live Session
             </span>
           </div>
@@ -347,10 +227,10 @@ export default function Home() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <span style={{ fontSize: '20px' }}>{getActivityIcon(act.type)}</span>
                     <div>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
                         {act.title}
                       </div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                         {act.details}
                       </div>
                     </div>
@@ -372,8 +252,10 @@ export default function Home() {
         <div className="glass-card">
           <div className="glass-card-header">
             <div>
-              <h3 style={{ fontSize: '16px', fontWeight: 700 }}>MedProof Protocol Status</h3>
-              <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+              <h3 style={{ fontSize: '17px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                MedProof Protocol Status
+              </h3>
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
                 Live Midnight Preprod network &amp; contract connectivity
               </p>
             </div>
@@ -383,10 +265,10 @@ export default function Home() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', fontSize: '13px' }}>
             <div
               style={{
-                background: 'var(--bg-input)',
+                background: '#F0FBF9',
                 padding: '12px 14px',
                 borderRadius: '8px',
-                border: '1px solid var(--border-subtle)',
+                border: '1px solid var(--border-card)',
               }}
             >
               <div
@@ -394,7 +276,7 @@ export default function Home() {
                   fontSize: '11px',
                   color: 'var(--text-muted)',
                   textTransform: 'uppercase',
-                  fontWeight: 600,
+                  fontWeight: 700,
                   marginBottom: '4px',
                 }}
               >
@@ -403,10 +285,10 @@ export default function Home() {
               <div
                 className="mono"
                 style={{
-                  color: '#85D1DB',
+                  color: 'var(--color-ocean-dark)',
                   wordBreak: 'break-all',
                   fontSize: '12px',
-                  fontWeight: 500,
+                  fontWeight: 600,
                 }}
               >
                 {systemStatus.contractAddress}
@@ -416,35 +298,35 @@ export default function Home() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div
                 style={{
-                  background: 'var(--bg-input)',
+                  background: '#F0FBF9',
                   padding: '12px',
                   borderRadius: '8px',
-                  border: '1px solid var(--border-subtle)',
+                  border: '1px solid var(--border-card)',
                 }}
               >
-                <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700 }}>
                   NETWORK TARGET
                 </div>
-                <div style={{ fontWeight: 700, color: '#85D1DB', marginTop: '3px' }}>
+                <div style={{ fontWeight: 700, color: 'var(--color-ocean-dark)', marginTop: '3px' }}>
                   Midnight Preprod
                 </div>
               </div>
 
               <div
                 style={{
-                  background: 'var(--bg-input)',
+                  background: '#F0FBF9',
                   padding: '12px',
                   borderRadius: '8px',
-                  border: '1px solid var(--border-subtle)',
+                  border: '1px solid var(--border-card)',
                 }}
               >
-                <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700 }}>
                   PROOF SERVER
                 </div>
                 <div
                   style={{
                     fontWeight: 700,
-                    color: systemStatus.proofServerOnline ? '#34d399' : '#fbbf24',
+                    color: systemStatus.proofServerOnline ? '#059669' : '#d97706',
                     marginTop: '3px',
                   }}
                 >
@@ -458,17 +340,17 @@ export default function Home() {
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                borderTop: '1px solid var(--border-subtle)',
+                borderTop: '1px solid var(--border-card)',
                 paddingTop: '10px',
                 fontSize: '12px',
               }}
             >
-              <span style={{ color: 'var(--text-muted)' }}>Public Data Leakage:</span>
-              <span style={{ color: '#2eb87e', fontWeight: 700 }}>0 bytes PHI / PII on-chain</span>
+              <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>Public Data Leakage:</span>
+              <span style={{ color: '#059669', fontWeight: 700 }}>0 bytes PHI / PII on-chain</span>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
-              <span style={{ color: 'var(--text-muted)' }}>Audited Circuits:</span>
+              <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>Audited Circuits:</span>
               <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>9 Circuits · 11 Ledger Mappings</span>
             </div>
 
@@ -476,7 +358,7 @@ export default function Home() {
               <Link
                 href="/credentials"
                 className="btn btn-secondary"
-                style={{ width: '100%', fontSize: '12px', padding: '9px' }}
+                style={{ width: '100%', fontSize: '12px', padding: '10px', textAlign: 'center' }}
               >
                 Inspect On-Chain Commitments in Explorer ↗
               </Link>
@@ -487,9 +369,9 @@ export default function Home() {
 
       {/* 3 Core Architecture Pillars */}
       <section className="grid-3" style={{ marginBottom: '32px' }}>
-        <div className="glass-card">
+        <div className="glass-card" style={{ borderTop: '4px solid var(--color-ocean)' }}>
           <div style={{ fontSize: '26px', marginBottom: '12px' }}>🔒</div>
-          <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '8px' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>
             7-Attribute Vector Locking
           </h3>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
@@ -497,19 +379,19 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="glass-card">
+        <div className="glass-card" style={{ borderTop: '4px solid var(--color-mint)' }}>
           <div style={{ fontSize: '26px', marginBottom: '12px' }}>🛡️</div>
-          <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '8px' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>
             Bilateral Patient Consent
           </h3>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-            No pharmacy or third party can verify a credential without explicit cryptographic consent derived from the patient's private secret and verifier public key.
+            No pharmacy or third party can verify a credential without explicit cryptographic consent derived from the patient&apos;s private secret and verifier public key.
           </p>
         </div>
 
-        <div className="glass-card">
+        <div className="glass-card" style={{ borderTop: '4px solid #5AB5C4' }}>
           <div style={{ fontSize: '26px', marginBottom: '12px' }}>⚡</div>
-          <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '8px' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>
             Single-Use Nullifiers
           </h3>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.55 }}>

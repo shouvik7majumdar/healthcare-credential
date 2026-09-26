@@ -106,8 +106,8 @@ export default function CredentialsExplorerPage() {
       {/* Transparency Guarantee Banner */}
       <div style={{
         padding: '16px 20px',
-        background: 'rgba(20, 184, 166, 0.06)',
-        border: '1px solid rgba(20, 184, 166, 0.25)',
+        background: '#E8FBF7',
+        border: '1px solid var(--color-ocean)',
         borderRadius: '10px',
         marginBottom: '24px',
         display: 'flex',
@@ -264,7 +264,7 @@ export default function CredentialsExplorerPage() {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          backgroundColor: 'rgba(9, 38, 44, 0.55)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -324,8 +324,8 @@ export default function CredentialsExplorerPage() {
 
               <div style={{
                 padding: '12px',
-                background: 'rgba(239, 68, 68, 0.08)',
-                border: '1px solid rgba(239, 68, 68, 0.2)',
+                background: '#FEF2F2',
+                border: '1px solid #FCA5A5',
                 borderRadius: '6px',
                 fontSize: '12px',
                 lineHeight: '1.5'

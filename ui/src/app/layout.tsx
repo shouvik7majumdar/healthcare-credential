@@ -26,12 +26,12 @@ export default function RootLayout({
             <main style={{ paddingBottom: '60px', minHeight: 'calc(100vh - 160px)' }}>{children}</main>
             <footer
               style={{
-                borderTop: '1px solid var(--border-subtle)',
+                borderTop: '1px solid var(--border-card)',
                 padding: '24px 24px 70px',
                 textAlign: 'center',
                 fontSize: '12px',
                 color: 'var(--text-muted)',
-                background: 'rgba(7, 10, 18, 0.95)',
+                background: '#EAF8F6',
               }}
             >
               MedProof Confidential Healthcare Credential &amp; Consent Exchange • Built with Midnight.js 4.1.1 &amp; Compact Zero-Knowledge Smart Contracts

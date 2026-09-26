@@ -561,7 +561,7 @@ function VerifierPortalContent() {
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(0,0,0,0.82)',
+          background: 'rgba(9, 38, 44, 0.55)',
           backdropFilter: 'blur(10px)',
           display: 'flex',
           alignItems: 'center',
@@ -639,8 +639,8 @@ function VerifierPortalContent() {
 
             {/* Privacy Tag */}
             <div style={{
-              background: 'rgba(182, 242, 209, 0.09)',
-              border: '1px solid rgba(182, 242, 209, 0.30)',
+              background: '#ECFDF5',
+              border: '1px solid #6EE7B7',
               borderRadius: '6px',
               padding: '10px 12px',
               fontSize: '12px',
