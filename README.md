@@ -113,6 +113,7 @@ healthcare-credential/
 - **Verifier Portal (`/verifier`)**: Pharmacies, insurers, and clinical research teams verify credentials with zero PHI disclosure.
 - **Credential Explorer (`/credentials`)**: Public on-chain commitment audit trail.
 - **Privacy Architecture (`/privacy`)**: Interactive breakdown of private witnesses vs public state.
+- **Lace Probe Diagnostic (`/lace-probe`)**: Real-time Midnight Lace DApp connector state & network diagnostic utility.
 
 ---
 
