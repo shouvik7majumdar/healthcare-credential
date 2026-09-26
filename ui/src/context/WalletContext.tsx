@@ -19,6 +19,8 @@ import {
   WalletExtensionChannelShutdownError,
   WalletLockedError,
   WalletAuthorizationRejectedError,
+  WalletTimeoutError,
+  WalletNotDetectedError,
 } from '../services/lace-wallet-service';
 
 export interface WalletDiagnostics {
@@ -56,6 +58,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [scanCount, setScanCount] = useState(0);
   const [lastScanTime, setLastScanTime] = useState<string>('Initializing scan...');
   const isConnectingRef = useRef(false);
+  const currentAttemptIdRef = useRef(0);
   const hasAutoConnectedRef = useRef(false);
 
   const scan = useCallback(() => {
@@ -76,6 +79,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       if (
         prev.status === 'ERROR' ||
         prev.status === 'REJECTED' ||
+        prev.status === 'TIMEOUT' ||
         prev.status === 'LOCKED' ||
         prev.status === 'UNAVAILABLE' ||
         prev.status === 'WRONG_NETWORK'
@@ -133,6 +137,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, [scan, wallet.status]);
 
   const cancelConnection = useCallback(() => {
+    currentAttemptIdRef.current++;
     isConnectingRef.current = false;
     resetLaceConnectionState();
     setWallet(prev => ({
@@ -150,6 +155,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       if (
         prev.status === 'ERROR' ||
         prev.status === 'REJECTED' ||
+        prev.status === 'TIMEOUT' ||
         prev.status === 'LOCKED' ||
         prev.status === 'UNAVAILABLE' ||
         prev.status === 'WRONG_NETWORK'

@@ -24,6 +24,13 @@ export interface DirectTestResult {
   errorMessage: string | null;
 }
 
+export class WalletTimeoutError extends Error {
+  constructor(details?: string) {
+    super(details || 'Lace connection timed out. Please approve the pending request in Lace, or try again.');
+    this.name = 'WalletTimeoutError';
+  }
+}
+
 export class WalletNotDetectedError extends Error {
   constructor() {
     super('Midnight Lace Wallet extension was not detected in this browser. Please ensure Midnight Lace is installed, unlocked, and enabled.');
@@ -615,7 +622,7 @@ export async function fetchWalletAddressData(
  * Connect to genuine Midnight Lace extension with automatic network negotiation
  * and robust, non-fatal address extraction.
  */
-export async function connectLaceWallet(preferredNetworkId?: string, timeoutMs = 60000): Promise<WalletState> {
+export async function connectLaceWallet(preferredNetworkId?: string, timeoutMs = 5500): Promise<WalletState> {
   if (isConnectInFlight) {
     throw new WalletConcurrentConnectError();
   }
@@ -634,8 +641,12 @@ export async function connectLaceWallet(preferredNetworkId?: string, timeoutMs =
     let selected = selectLaceProvider(providers);
 
     if (!selected && typeof window !== 'undefined') {
-      for (let i = 0; i < 10; i++) {
-        await new Promise((r) => setTimeout(r, 200));
+      const win = window as any;
+      if (!win.midnight && !win.cardano?.mnLace) {
+        throw new WalletNotDetectedError();
+      }
+      for (let i = 0; i < 3; i++) {
+        await new Promise((r) => setTimeout(r, 50));
         providers = detectAllMidnightProviders();
         selected = selectLaceProvider(providers);
         if (selected) break;
@@ -666,11 +677,7 @@ export async function connectLaceWallet(preferredNetworkId?: string, timeoutMs =
 
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => {
-        reject(
-          new Error(
-            'Connection timed out. Please click the Midnight Lace extension icon in your Chrome toolbar to approve access.'
-          )
-        );
+        reject(new WalletTimeoutError('Lace connection timed out. Please approve the pending request in Lace, or try again.'));
       }, timeoutMs);
     });
 
@@ -703,6 +710,9 @@ export async function connectLaceWallet(preferredNetworkId?: string, timeoutMs =
         throw new Error('Provider does not expose connect() or enable() method.');
       }
     } catch (err: any) {
+      if (err instanceof WalletTimeoutError || err?.name === 'WalletTimeoutError' || err?.message?.toLowerCase().includes('timed out')) {
+        throw err;
+      }
       if (err instanceof WalletAuthorizationRejectedError) {
         if (process.env.NODE_ENV !== 'production') {
           console.log('[MEDPROOF-LACE] CONNECT_CALL_REJECTED', { elapsedMs: Date.now() - startTime });

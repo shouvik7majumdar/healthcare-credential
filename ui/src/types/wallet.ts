@@ -14,6 +14,7 @@ export type WalletStatus =
   | 'LACE_UNAVAILABLE'
   | 'UNAVAILABLE'
   | 'REJECTED'
+  | 'TIMEOUT'
   | 'ERROR'
   | 'LOCKED'
   | 'WRONG_NETWORK';
@@ -60,6 +61,8 @@ export function getWalletStatusLabel(status: WalletStatus): string {
       return 'Connected — loading wallet data...';
     case 'WALLET_DATA_READY':
       return 'Connected';
+    case 'TIMEOUT':
+      return 'Lace connection timed out. Click Retry.';
     case 'LACE_LOCKED':
     case 'LOCKED':
       return 'Unlock Midnight Lace and retry.';

@@ -34,6 +34,9 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
   if (!isOpen) return null;
 
   const handleConnect = async () => {
+    if (wallet.status === 'CONNECTING' || wallet.status === 'WAITING_FOR_LACE') {
+      return;
+    }
     try {
       await connect(targetNetworkId);
       onClose();
@@ -388,6 +391,33 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
           )
         )}
 
+                {/* Timeout Banner */}
+        {wallet.status === 'TIMEOUT' && (
+          <div style={{
+            background: 'rgba(245, 158, 11, 0.12)',
+            border: '1px solid rgba(245, 158, 11, 0.4)',
+            borderRadius: '8px',
+            padding: '12px 14px',
+            marginBottom: '16px',
+            fontSize: '12px',
+            color: '#92400E',
+            lineHeight: 1.5,
+          }}>
+            <div style={{ fontWeight: 600, marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>⌛ Lace Connection Timed Out</span>
+              <button
+                onClick={clearError}
+                style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: '11px', opacity: 0.8 }}
+              >
+                Dismiss
+              </button>
+            </div>
+            <div>
+              Lace connection timed out. Please approve the pending request in the Lace extension, or click <strong>Retry Connection</strong>.
+            </div>
+          </div>
+        )}
+
         {/* Waiting for Lace Banner */}
         {(wallet.status === 'CONNECTING' || wallet.status === 'WAITING_FOR_LACE') && (
           <div style={{
@@ -414,19 +444,28 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
           <div style={{ display: 'flex', gap: '8px' }}>
             <button
               className="btn btn-primary"
-              onClick={() => { cancelConnection(); handleConnect(); }}
-              disabled={false}
-              style={{ flex: 1, padding: '12px', fontSize: '14px', fontWeight: 600 }}
+              onClick={handleConnect}
+              disabled={wallet.status === 'CONNECTING' || wallet.status === 'WAITING_FOR_LACE'}
+              style={{
+                flex: 1,
+                padding: '12px',
+                fontSize: '14px',
+                fontWeight: 600,
+                opacity: (wallet.status === 'CONNECTING' || wallet.status === 'WAITING_FOR_LACE') ? 0.7 : 1,
+                cursor: (wallet.status === 'CONNECTING' || wallet.status === 'WAITING_FOR_LACE') ? 'not-allowed' : 'pointer',
+              }}
             >
-              {wallet.status === 'CONNECTING'
-                ? '⚁ Click to Connect (Lace Unlocked)'
+              {wallet.status === 'CONNECTING' || wallet.status === 'WAITING_FOR_LACE'
+                ? '⏳ Connecting to Lace...'
+                : wallet.status === 'TIMEOUT'
+                ? '🔄 Retry Connection'
                 : wallet.status === 'LOCKED'
-                  ? 'Retry Connection'
-                  : isChannelShutdown
-                    ? '🔄 Reload Page & Reconnect'
-                    : (wallet.status === 'ERROR' || wallet.status === 'REJECTED')
-                      ? 'Retry Connection in Lace'
-                      : 'Approve Connection in Lace'}
+                ? '🔓 Retry Connection'
+                : isChannelShutdown
+                ? '🔄 Reload Page & Reconnect'
+                : (wallet.status === 'ERROR' || wallet.status === 'REJECTED')
+                ? '🔄 Retry Connection'
+                : 'Approve Connection in Lace'}
             </button>
             {isChannelShutdown && wallet.status !== 'CONNECTING' && (
               <button
