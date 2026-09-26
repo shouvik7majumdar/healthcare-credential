@@ -10,17 +10,17 @@
 **MedProof** is a production-grade, privacy-preserving healthcare credential and consent exchange built on the **Midnight Network** using **Compact** smart contracts and Zero-Knowledge proofs (zk-SNARKs). MedProof empowers patients, authorized healthcare prescribers, and licensed verifiers (pharmacies, insurers, research clinics) to issue, manage, consent to, and verify healthcare credentials without exposing sensitive Personal Health Information (PHI), diagnostic data, or patient/doctor identities on-chain.
 
 <p align="center">
-  <h3>LANDING PAGE</h3>
-  <img src="docs/images/landing-page.png" alt="MedProof Landing Page" width="100%" />
+  <h3>MEDPROOF OVERVIEW</h3>
+  <img src="docs/images/medproof-overview.png" alt="MedProof Overview Dashboard" width="100%" />
   <br />
-  <i>MedProof Landing Page — Zero-Knowledge Healthcare Credential & Consent Exchange Overview.</i>
+  <i>MedProof Overview — Zero-Knowledge Healthcare Credential & Consent Exchange with live Midnight Preprod Testnet status, active credentials, ZK verifications, and wallet connectivity.</i>
 </p>
 
 <p align="center">
-  <h3>CONFIDENTIAL PATIENT VAULT</h3>
-  <img src="docs/images/patient-vault.png" alt="Confidential Patient Vault" width="100%" />
+  <h3>PATIENT CONFIDENTIAL VAULT</h3>
+  <img src="docs/images/medproof-patient-vault.png" alt="Patient Confidential Vault" width="100%" />
   <br />
-  <i>Patient Confidential Vault interface for managing encrypted clinical prescriptions, inspecting zero-knowledge commitments, and controlling verifier consent permissions.</i>
+  <i>Patient Confidential Vault — Client-side Zero-Knowledge Wallet with encrypted off-chain clinical prescriptions, public on-chain Midnight Preprod commitments, and verifier consent management.</i>
 </p>
 
 ---
